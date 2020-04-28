@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 import os
-import code.config
+import config
 
 
 def parse_arguments():
@@ -9,11 +9,16 @@ def parse_arguments():
     """
     parser = ArgumentParser()
 
+    # For development/testing
+    parser.add_argument("--dev", help="run the code of the developers tag")
+
     return parser.parse_args()
 
 
 def main(ARGS):
-    pass
+    if ARGS.dev:
+
+        pass
 
 
 
