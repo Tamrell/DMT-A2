@@ -42,7 +42,7 @@ class BookingDataset():
         self.search_no = len(train_df["srch_id"].unique())
 
         not_for_train = ["srch_id", "relevance", "random_bool"]
-        # - 3 for srch_id
+
         self.feature_no = train_df.shape[1] - len(not_for_train)
         self.batches = {}
         self.relevances = {}
