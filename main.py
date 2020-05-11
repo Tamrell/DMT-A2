@@ -16,9 +16,6 @@ def main(ARGS):
     pass
 
 
-
-
-
 if __name__ == '__main__':
     ARGS = parse_arguments()
     main(ARGS)

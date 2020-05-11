@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from data_handling import Dataset
+from code.data_handling import Dataset
 
 
 def train_k_fold(config, k=10):
