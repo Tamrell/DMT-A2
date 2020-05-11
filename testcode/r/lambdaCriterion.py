@@ -77,15 +77,16 @@ class ArrayModuleFunctions:
     """
     def __init__(self, module):
         if module == "torch":
-            raise NotImplementedError()
+            self.mul = self.torch_mul
+            # raise NotImplementedError()
         elif module == 'numpy':
             raise NotImplementedError()
         else:
             ValueError(f"incorrect module specified, expected 'torch' of 'numpy', got {module}")
 
     @staticmethod
-    def torch_mul(a, b, **kwargs):
-        return torch.mul(a, b, kwargs)
+    def torch_mul(a, b):
+        return torch.mul(a, b)
 
 
 
@@ -105,7 +106,7 @@ def torch_rank_1d(values):
 
 
 if __name__ == '__main__':
-    amf = AMF("torch")
+    amf = ArrayModuleFunctions("torch")
     a = torch.rand((5,2))
     b = torch.rand((5,2)) *10
     print(amf.mul(a, b))
