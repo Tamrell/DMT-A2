@@ -16,9 +16,9 @@ TRACKING_CSV = os.path.join("results", "io_tracking.csv")
 TRACKING_DF = None
 
 
-def get_tracking_df():
+def get_tracking_df(init=''):
     if not os.path.exists(TRACKING_CSV):
-        user_input = ''
+        user_input = init
         msg = "No tracking csv was found, do you want to initialize one? y/n "
         while user_input not in ('y', 'n'):
             user_input = input(msg).lower()
@@ -81,6 +81,7 @@ TRACKING_DF = get_tracking_df()
 if __name__ == "__main__":
     hyperparam = {"is_good_model":True, "will_impress_Angelo_n_Reitze":False}
     model_id = add_model(hyperparam)
+
     # Note that you can have a model id as soon as you know the hyperparameters.
     pred_str = "Very good predictions, also very impressed.csv"
     save_predictions(model_id, pred_str)

@@ -10,14 +10,15 @@ def save_ground_truth(df, filename="ground truth.p", at=5):
 
     ground_truth = {}
     total = len(df["srch_id"].unique())
-    logs = {i:1/np.log2(i+2) for i in range(at)}
+    largest = 50  # TODO; make less hotfixy for the largest length of the search query.
+    logs = {i:1/np.log2(i+2) for i in range(largest)}
 
     grouped = df.groupby(by="srch_id")
 
     print("starting collection for ground truth...")
 
     for s, sub_df in progressbar(grouped, max_value=total):
-        ground_truth[s] = {"properties": {}, "iDCG": 0}
+        ground_truth[s] = dict()
         vals = []
 
         for _, row in sub_df.iterrows():
@@ -37,7 +38,8 @@ def save_ground_truth(df, filename="ground truth.p", at=5):
             vals.append(val)
 
         vals.sort(reverse=True)
-        ground_truth[s]["iDCG"] = sum(vals[i] * logs[i] for i in range(at))
+        ground_truth[s]["iDCG@5"] = sum(vals[i] * logs[i] for i in range(at))
+        ground_truth[s]["iDCG@end"] = sum(val * logs[i] for i, val in enumerate(vals))
     pk.dump(ground_truth, open(filename, 'wb'))
     print(f"Done, ground truth saved as pickle dump in {filename}")
 

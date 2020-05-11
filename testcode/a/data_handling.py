@@ -250,7 +250,8 @@ def assign_prior_information(df, prior_dict):
 
 
 def k_fold_segmentation(train_df, k=10, save_as_files=True):
-    folds = {s: np.random.randint(0, 10) for s in train_df["srch_id"].unique()}
+    # TODO; shuffle all search_ids and make even-length folds over them.
+    folds = {s: np.random.randint(0, k) for s in train_df["srch_id"].unique()}
 
     folds_list = []
     for _, row in train_df.iterrows():
@@ -265,7 +266,7 @@ def k_fold_segmentation(train_df, k=10, save_as_files=True):
         os.mkdir(os.path.join("data", "train_segments"))
         #### PATH #####
 
-        for i in range(10):
+        for i in range(k):
             to_save = train_df[train_df["fold_segment"]==i]
 
             #### PATH #####

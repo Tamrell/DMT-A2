@@ -12,7 +12,8 @@ def ndcg(gt_dict, pred_df, at=5):
             - pred_df (DataFrame): dataframe containing predictions
 
         Returns:
-            - NDCG (float): normalized discounted cumulative gain
+            - NDCG (float): normalized discounted cumulative gain as described
+                            in blog post
     """
     ndcg_list = []
     logs = {i:np.log2(i+2) for i in range(at)}
@@ -27,7 +28,7 @@ def ndcg(gt_dict, pred_df, at=5):
             if i == at:
                 break
             dcg += gt_dict[s][p] / logs[i]
-        ndcg_list.append(dcg / gt_dict[s]["iDCG"])
+        ndcg_list.append(dcg / gt_dict[s]["iDCG@5"])
     return np.mean(ndcg_list)
 
 
