@@ -14,7 +14,7 @@ class ExodiaNet(nn.Module):
 
         self.in_size = in_size
         self.out_size = 1
-        self.activation = n.LeakyReLu(relu_slope)
+        self.activation = nn.LeakyReLU(relu_slope)
         self.hidden = nn.ModuleList()
         self.model_id = model_id
 
@@ -28,9 +28,9 @@ class ExodiaNet(nn.Module):
         self.hidden.append(nn.Linear(layer_size, self.out_size))
 
     def forward(self, x):
-        for layer in self.hidden:
+        for layer in self.hidden[:-1]:
             x = self.activation(layer(x))
-        return x
+        return self.hidden[-1](x)
 
 
 class AttentionLayer(nn.Module):
@@ -52,5 +52,3 @@ class AttentionLayer(nn.Module):
         if self.res:
             return kq @ value + x  # y dos dis work :'(
         return kq @ value
-
-
