@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 import os
-import code.config
+from codebase import config
+from codebase import train
 
 
 def parse_arguments():
@@ -13,7 +14,7 @@ def parse_arguments():
 
 
 def main(ARGS):
-    pass
+    train.train_dummy()
 
 
 if __name__ == '__main__':
