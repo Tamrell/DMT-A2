@@ -34,7 +34,7 @@ class DeltaNDCG:
             diffs, 2d floattensor Delta DCG
         """
 
-        rank_values = rank_torch_1d(scores).float()
+        rank_values = torch_rank_1d(scores).float()
         if not len(rank_values.size()):
             rank_values = rank_values.unsqueeze(dim=-1)
         num_items = len(rank_values.tolist())
@@ -77,11 +77,23 @@ class ArrayModuleFunctions:
     """
     def __init__(self, module):
         if module == "torch":
+            raise NotImplementedError()
+        elif module == 'numpy':
+            raise NotImplementedError()
+        else:
+            ValueError(f"incorrect module specified, expected 'torch' of 'numpy', got {module}")
+
+    @staticmethod
+    def torch_mul(a, b, **kwargs):
+        return torch.mul(a, b, kwargs)
 
 
 
 
-def rank_torch_1d(values):
+
+
+
+def torch_rank_1d(values):
     """ Returns tensor with on each index the rank of the value form high to low,
     ranking starts at 1
     ranking is in descending order, e.g:
@@ -89,3 +101,11 @@ def rank_torch_1d(values):
         ranking = [3,2,4,5,1]
     """
     return torch.argsort(torch.argsort(values, descending=True)) + 1
+
+
+
+if __name__ == '__main__':
+    amf = AMF("torch")
+    a = torch.rand((5,2))
+    b = torch.rand((5,2)) *10
+    print(amf.mul(a, b))
