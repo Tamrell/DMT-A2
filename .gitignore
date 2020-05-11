@@ -6,6 +6,9 @@ __pycache__/
 # data folder
 data/
 
+# Benchmark folder
+benchmark_results/
+
 # C extensions
 *.so
 
@@ -130,3 +133,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+assignment_2.pdf

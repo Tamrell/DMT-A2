@@ -4,7 +4,7 @@ import os
 import sys
 import time
 import torch
-import benchmark
+from codebase import benchmark
 
 #===================== Dataset for the model training ==============
 
@@ -41,8 +41,9 @@ class BookingDataset():
 
         self.search_no = len(train_df["srch_id"].unique())
 
-        # - 1 for srch_id
-        self.feature_no = train_df.shape[1] - 1
+        not_for_train = ["srch_id", "relevance", "random_bool"]
+
+        self.feature_no = train_df.shape[1] - len(not_for_train)
         self.batches = {}
         self.relevances = {}
         self.rand_bools = {}
@@ -52,14 +53,14 @@ class BookingDataset():
 
         # Precompute batches
         for s, sub_df in train_df.groupby("srch_id"):
-            self.batches[s] = torch.from_numpy(sub_df.drop(columns=["srch_id", "relevance", "random_bool"]).values)
-            self.relevances[s] = torch.from_numpy(sub_df[["relevance"]].values)
-            self.rand_bools[s] = sub_df["random_bool"].to_list()[0]
+            self.batches[s] = torch.from_numpy(sub_df.drop(columns=not_for_train).values).float()
+            self.relevances[s] = torch.from_numpy(sub_df[["relevance"]].values).float()
+            self.rand_bools[s] = sub_df["random_bool"].tolist()[0]
 
         for s, sub_df in val_df.groupby("srch_id"):
-            self.val_batches[s] = torch.from_numpy(sub_df.drop(columns=["srch_id", "relevance", "random_bool"]).values)
-            self.val_relevances[s] = torch.from_numpy(sub_df[["relevance"]].values)
-            self.val_rand_bools[s] = sub_df["random_bool"].to_list()[0]
+            self.val_batches[s] = torch.from_numpy(sub_df.drop(columns=not_for_train).values).float()
+            self.val_relevances[s] = torch.from_numpy(sub_df[["relevance"]].values).float()
+            self.val_rand_bools[s] = sub_df["random_bool"].tolist()[0]
 
 
     def get_val(self, key):
@@ -250,7 +251,8 @@ def assign_prior_information(df, prior_dict):
 
 
 def k_fold_segmentation(train_df, k=10, save_as_files=True):
-    folds = {s: np.random.randint(0, 10) for s in train_df["srch_id"].unique()}
+    # TODO; shuffle all search_ids and make even-length folds over them.
+    folds = {s: np.random.randint(0, k) for s in train_df["srch_id"].unique()}
 
     folds_list = []
     for _, row in train_df.iterrows():
@@ -265,7 +267,7 @@ def k_fold_segmentation(train_df, k=10, save_as_files=True):
         os.mkdir(os.path.join("data", "train_segments"))
         #### PATH #####
 
-        for i in range(10):
+        for i in range(k):
             to_save = train_df[train_df["fold_segment"]==i]
 
             #### PATH #####
