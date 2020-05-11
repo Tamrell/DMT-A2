@@ -1,66 +1,60 @@
 import numpy as np
 import torch
 from codebase.data_handling import BookingDataset
+from codebase.nn_models import ExodiaNet
+from codebase import io
 
 
-def train_k_fold(config, k=10):
-    for fold_no in range(1, k+1):
-        fold_dataset = BookingDataset(fold_no)
-
-        # TODO
-        model = None
-
-        # Train a model with the current fold
-        train(model, config, fold_dataset)
-
-
-def train_full(config, folds):
-    dataset = BookingDataset(folds)
-
-    # TODO
-    model = None
-
-    # Train a model with the full dataset
-    train(model, config, dataset)
-
-
-def train_dummy(hyperparameter_dict):
-    dataset = BookingDataset("dummy")
-
-    # TODO
-    model = None
-
-    # Train a model with the dummy dataset
-    train(model, config, dataset)
-
-
-def train(model, config, dataset):
+def train(model, dataset, epochs, learning_rate, device):
     """Trains the model on the given dataset
         Args:
             - config (?): contains information on hyperparameter settings and such.
             - dataset (Dataset object): dataset with which to train the model.
     """
 
-    # Initialize the device which to run the model on
-    device = torch.device("cuda:0")#(config.device)
-
     # Setup the loss and optimizer
-    criterion = None
-    optimizer = None
+    model.to(device)
+    criterion = None  # lage standaarden
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate).to(device)
 
-    for epoch in range(config.epochs):
 
-        ### NAMES ARE SUBJECT TO CHANGE, THIS IS ONLY FOR THE FORM ###
-        # s = srch_id (integer/str)
-        # X = train batch (matrix)
-        # Y = relevances (vector)
-        # rand = random_bool value ()
-        for s, X, Y, rand in fold_dataset:
+    for epoch in range(epochs):
+        for search_id, X, Y, rand_bool in dataset:
             X = X.to(device)
-            # Then = calculat
+            model(X)
 
-        # If we would want the validation stats every epoch:
+
         with torch.no_grad():
-            for  s_V, X_V, Y_V, rand_V in fold_dataset.validation_batch_iter():
+            for search_id_V, X_V, Y_V, rand_bool_V in dataset.validation_batch_iter():
                 X_V = X_V.to(device)
-                # Then = calculat
+
+
+def train_main(hyperparameters, fold_config):
+
+    if fold_config != "k_folds":
+        dataset = BookingDataset(fold_config)
+        model_id = io.add_model(hyperparameters)
+        model = ExodiaNet(model_id,
+                          dataset.feature_no,
+                          hyperparameters['layer_size'],
+                          hyperparameters['layers'],
+                          hyperparameters['attention_layer_idx'],
+                          hyperparameters['resnet'],
+                          hyperparameters['relu_slope'])
+
+        train(model, hyperparameters, dataset)
+        return
+
+    K = 10
+    for fold_no in range(1, K + 1):
+        dataset = BookingDataset(fold_no)
+        model_id = io.add_model(hyperparameters)
+        model = ExodiaNet(model_id,
+                          dataset.feature_no,
+                          hyperparameters['layer_size'],
+                          hyperparameters['layers'],
+                          hyperparameters['attention_layer_idx'],
+                          hyperparameters['resnet'],
+                          hyperparameters['relu_slope'])
+        train(model, hyperparameters, dataset)
+    return

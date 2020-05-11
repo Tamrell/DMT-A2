@@ -55,12 +55,12 @@ class BookingDataset():
         for s, sub_df in train_df.groupby("srch_id"):
             self.batches[s] = torch.from_numpy(sub_df.drop(columns=not_for_train).values)
             self.relevances[s] = torch.from_numpy(sub_df[["relevance"]].values)
-            self.rand_bools[s] = sub_df["random_bool"].to_list()[0]
+            self.rand_bools[s] = sub_df["random_bool"].tolist()[0]
 
         for s, sub_df in val_df.groupby("srch_id"):
             self.val_batches[s] = torch.from_numpy(sub_df.drop(columns=not_for_train).values)
             self.val_relevances[s] = torch.from_numpy(sub_df[["relevance"]].values)
-            self.val_rand_bools[s] = sub_df["random_bool"].to_list()[0]
+            self.val_rand_bools[s] = sub_df["random_bool"].tolist()[0]
 
 
     def get_val(self, key):

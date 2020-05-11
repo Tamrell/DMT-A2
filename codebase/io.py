@@ -42,7 +42,6 @@ def add_hyperparam(hyperparameter, default_value=None, save=True):
         TRACKING_DF.to_csv(TRACKING_CSV)
 
 
-# TODO; Add this function in the init of the model class.
 def add_model(hyperparam_dict, save=True):
     """Add the hyperparameters of the new model that will be tracked. Return
     the model id."""

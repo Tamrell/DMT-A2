@@ -5,7 +5,7 @@ import torch
 from codebase import train
 
 
-HYPERPARAM_DICT = {
+HYPERPARAMETERS = {
     "epochs" : 2,
     "learning_rate" : 1e-3,
     "layers" : 3,
@@ -14,15 +14,9 @@ HYPERPARAM_DICT = {
     "resnet" : False,
 
     # These hyperparameters are not in the commandline arguments.
-    "device" : None
+    "device" : None,
+    "relu_slope" : 0.01
 }
-
-
-def add_hyperparameters_arguments(parser):
-    global HYPERPARAM_DICT
-
-    for hyperparameter, default_value in HYPERPARAM_DICT.items():
-        parser.add_argument("--" + hyperparameter, type=type(default_value))
 
 
 def parse_arguments():
@@ -30,17 +24,22 @@ def parse_arguments():
     this program.
     """
     parser = ArgumentParser()
-    parser.add_argument("--train", type=bool)
+
+    parser.add_argument("--train", action="store_true")
+    for hyperparameter, default_value in HYPERPARAMETERS.items():
+        parser.add_argument("--" + hyperparameter, type=type(default_value))
+
+    parser.add_argument("--dummy", action="store_true")
 
     return parser.parse_args()
 
 
 def set_device():
-    global HYPERPARAM_DICT
+    global HYPERPARAMETERS
 
     # setting device on GPU if available, else CPU
     device =  torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    HYPERPARAM_DICT['device'] = device
+    HYPERPARAMETERS['device'] = device
     print('Using device:', device)
     print()
 
@@ -53,10 +52,21 @@ def set_device():
 
 
 def main(ARGS):
-    set_device()
-    train.train_dummy(HYPERPARAM_DICT)
+    global HYPERPARAMETERS
+
+    if ARGS.train:
+        for key in HYPERPARAMETERS:
+            value = eval(f"ARGS.{key}")
+            assert value, f"missing value for {key}."
+            HYPERPARAMETERS[key] = value
+        train.train_main(HYPERPARAMETERS, "k_folds")
+
+    else:
+        assert ARGS.dummy, "If not train, then the dummy flaggy should be used. You dumdum"
+        train.train_main(HYPERPARAMETERS, "dummy")
 
 
 if __name__ == '__main__':
     ARGS = parse_arguments()
+    set_device()
     main(ARGS)
