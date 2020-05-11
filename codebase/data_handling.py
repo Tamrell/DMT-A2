@@ -4,7 +4,7 @@ import os
 import sys
 import time
 import torch
-from code import benchmark
+from codebase import benchmark
 
 #===================== Dataset for the model training ==============
 

@@ -1,11 +1,11 @@
 import numpy as np
 import torch
-from code.data_handling import Dataset
+from codebase.data_handling import BookingDataset
 
 
 def train_k_fold(config, k=10):
     for fold_no in range(1, k+1):
-        fold_dataset = Dataset(fold_no)
+        fold_dataset = BookingDataset(fold_no)
 
         # TODO
         model = None
@@ -14,8 +14,8 @@ def train_k_fold(config, k=10):
         train(model, config, fold_dataset)
 
 
-def train_full(config):
-    dataset = Dataset("full")
+def train_full(config, folds):
+    dataset = BookingDataset(folds)
 
     # TODO
     model = None
@@ -24,8 +24,8 @@ def train_full(config):
     train(model, config, dataset)
 
 
-def train_dummy(config,):
-    dataset = Dataset("dummy")
+def train_dummy(hyperparameter_dict):
+    dataset = BookingDataset("dummy")
 
     # TODO
     model = None
