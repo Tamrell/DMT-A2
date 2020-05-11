@@ -41,8 +41,9 @@ class BookingDataset():
 
         self.search_no = len(train_df["srch_id"].unique())
 
-        # - 1 for srch_id
-        self.feature_no = train_df.shape[1] - 1
+        not_for_train = ["srch_id", "relevance", "random_bool"]
+        # - 3 for srch_id
+        self.feature_no = train_df.shape[1] - len(not_for_train)
         self.batches = {}
         self.relevances = {}
         self.rand_bools = {}
@@ -52,12 +53,12 @@ class BookingDataset():
 
         # Precompute batches
         for s, sub_df in train_df.groupby("srch_id"):
-            self.batches[s] = torch.from_numpy(sub_df.drop(columns=["srch_id", "relevance", "random_bool"]).values)
+            self.batches[s] = torch.from_numpy(sub_df.drop(columns=not_for_train).values)
             self.relevances[s] = torch.from_numpy(sub_df[["relevance"]].values)
             self.rand_bools[s] = sub_df["random_bool"].to_list()[0]
 
         for s, sub_df in val_df.groupby("srch_id"):
-            self.val_batches[s] = torch.from_numpy(sub_df.drop(columns=["srch_id", "relevance", "random_bool"]).values)
+            self.val_batches[s] = torch.from_numpy(sub_df.drop(columns=not_for_train).values)
             self.val_relevances[s] = torch.from_numpy(sub_df[["relevance"]].values)
             self.val_rand_bools[s] = sub_df["random_bool"].to_list()[0]
 
