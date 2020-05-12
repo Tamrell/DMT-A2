@@ -39,12 +39,13 @@ def train(model, dataset, epochs, learning_rate, device):
 ####################### NEW ##################
 ######## Do we want initialization loss?
 ####### convergence criterium? ######
-            batch_loss = criterion.compute_loss_torch(out, Y, gt[search_id]["iDCG@end"], TEST_SIGMA, device)########srch_id level might be interesting for performance analysis (what kind of srches are easy to predict etc.)
+            batch_loss = criterion.compute_loss_torch(out, Y, gt[search_id]["iDCG@end"], TEST_SIGMA, device).sum() ########srch_id level might be interesting for performance analysis (what kind of srches are easy to predict etc.)
             train_loss += batch_loss.sum()
             optimizer.zero_grad()
             batch_loss.backward()
             optimizer.step()
 ##############################################
+        print("Exodia has gotten even stronger! (hopefully)")
 
         validation_loss = 0
         with torch.no_grad():

@@ -14,17 +14,17 @@ class DeltaNDCG:
 
     def compute_loss_torch(self, scores, relevances,  iDCG, sigma, device):
         precompute_S_arr = s_tensor(relevances, sigma).to(device)
-        relevances_tensor = self.make_relevance_numinator_torch(relevances)
+        relevances_tensor = self.make_relevance_nominator_torch(relevances)
         return  torch.mul(self.ranknet_cost_torch(scores, precompute_S_arr, sigma), self.dNDCG_torch(scores, relevances_tensor, iDCG)).sum(dim=1)
 
 
     def compute_loss_numpy(self, scores, relevances, iDCG, sigma):
         precompute_S_arr = s_array(relevances, sigma)
-        relevances_tensor = self.make_relevance_numinator_numpy(relevances)
+        relevances_tensor = self.make_relevance_nominator_numpy(relevances)
         return  np.multiply(self.ranknet_cost_numpy(scores, precompute_S_arr, sigma), self.dNDCG_numpy(scores, relevances_tensor, iDCG))
 
 
-    def make_relevance_numinator_numpy(self, relevances, exponent=False, add_one=False):
+    def make_relevance_nominator_numpy(self, relevances, exponent=False, add_one=False):
         num_items = relevances.shape[0]
         if add_one:
             relevances += 1
@@ -34,7 +34,7 @@ class DeltaNDCG:
         else:
             return np.stack([relevances for _ in range(num_items)])
 
-    def make_relevance_numinator_torch(self, relevances, exponent=False, add_one=False):
+    def make_relevance_nominator_torch(self, relevances, exponent=False, add_one=False):
         num_items = relevances.size()[0]
         if add_one:
             relevances += 1
