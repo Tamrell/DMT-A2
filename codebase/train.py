@@ -29,14 +29,13 @@ def train(model, dataset, epochs, learning_rate, device):
         # to keep track of batches/second
         t = time.time()
 
-        train_loss = 0
         i = 0
-        kek0=0
+        trn_ndcg = list()
+
         for search_id, X, Y, rand_bool in dataset:
-            i+=1
             if not gt[search_id]["iDCG@end"]:
-                kek0+=1
                 continue
+            i += 1
             X = X.to(device)
             Y = Y.to(device)
 
@@ -45,33 +44,39 @@ def train(model, dataset, epochs, learning_rate, device):
 ####################### NEW ##################
 ######## Do we want initialization loss?
 ####### convergence criterium? ######
-            crit = criterion.compute_loss_torch(out, Y, gt[search_id]["iDCG@end"], TEST_SIGMA, device)
+            crit, denominator = criterion.compute_loss_torch(out, Y, gt[search_id]["iDCG@end"], TEST_SIGMA, device)
+            with torch.no_grad():
+                idx = torch.argsort(denominator.squeeze(), descending=True)[:5]
+
+                trn_ndcg.append(((denominator[idx] @ Y[idx])/gt[search_id]["iDCG@5"]).item())
+
             # input(crit)
             batch_loss = crit.sum() ########srch_id level might be interesting for performance analysis (what kind of srches are easy to predict etc.)
-
-            trn_loss = batch_loss.sum()
-            train_loss += trn_loss
-            print(f"{i}: {trn_loss}", end="\r")
+            if i > 100:
+                print(f"{i}: {np.mean(trn_ndcg[-100:])}", end="\r")
             optimizer.zero_grad()
             batch_loss.backward()
             optimizer.step()
+
 ##############################################
         print("Exodia has gotten even stronger! (hopefully)")
 
-        validation_loss = 0
+        val_ndcg
         with torch.no_grad():
             kek=0
             for search_id_V, X_V, Y_V, rand_bool_V in dataset.validation_batch_iter():
                 if not gt[search_id]["iDCG@end"]:
                     kek+=1
                     continue
+
                 X_V = X_V.to(device)
                 Y_V = Y_V.to(device)
 
                 out_val = model(X_V)
-                validation_loss += criterion.compute_loss_torch(out_val, Y_V, gt[search_id_V]["iDCG@end"], TEST_SIGMA, device).abs().sum()
-        validation_loss /= (dataset.val_len - kek)
-        print(f"Train Loss: {train_loss/(len(dataset)-kek0)}, Validation Loss: {validation_loss} (Epoch time: {time.time()-t})")
+                crit, denominator = criterion.compute_loss_torch(out_val, Y_V, gt[search_id_V]["iDCG@end"], TEST_SIGMA, device)
+                idx = torch.argsort(denominator.squeeze(), descending=True)[:5]
+                val_ndcg.append(((denominator[idx] @ Y_V[idx])/gt[search_id]["iDCG@5"]).item())
+        print(f"Train NDCG: {np.mean(trn_ndcg)}, Validation NDCG: {np.mean(val_ndcg)} (Epoch time: {time.time()-t})")
 
 def train_main(hyperparameters, fold_config):
 
