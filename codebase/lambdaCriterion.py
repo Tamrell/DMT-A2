@@ -60,10 +60,14 @@ class DeltaNDCG:
         rank_values = torch_rank_1d(scores).float()
         denominator = 1./torch.log2(rank_values + 1)
         rank_denominator_tensor = torch.stack([denominator for _ in range(num_items)])
+
+        original = torch.mul(relevances_tensor, rank_denominator_tensor)
+        after_swap = torch.mul(relevances_tensor, rank_denominator_tensor.T)
         # print("rank_denominator_tensor", rank_denominator_tensor)
         # print("rank_denominator_tensor.size()", rank_denominator_tensor.size())
         # print("rank_values", rank_values)
-        return (torch.mul(relevances_tensor, rank_denominator_tensor) - torch.mul(relevances_tensor, rank_denominator_tensor.T))/iDCG
+        # return (torch.mul(relevances_tensor, rank_denominator_tensor) - torch.mul(relevances_tensor, rank_denominator_tensor.T))/iDCG
+        return (original + original.T) - (after_swap + after_swap.T)
 
 
     def dNDCG_numpy(self, scores, relevances_array, iDCG):
