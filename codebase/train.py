@@ -30,7 +30,9 @@ def train(model, dataset, epochs, learning_rate, device):
         t = time.time()
 
         train_loss = 0
+        i = 0
         for search_id, X, Y, rand_bool in dataset:
+            i+=1
             X = X.to(device)
             Y = Y.to(device)
 
@@ -39,8 +41,13 @@ def train(model, dataset, epochs, learning_rate, device):
 ####################### NEW ##################
 ######## Do we want initialization loss?
 ####### convergence criterium? ######
-            batch_loss = criterion.compute_loss_torch(out, Y, gt[search_id]["iDCG@end"], TEST_SIGMA, device).sum() ########srch_id level might be interesting for performance analysis (what kind of srches are easy to predict etc.)
-            train_loss += batch_loss.sum()
+            crit = criterion.compute_loss_torch(out, Y, gt[search_id]["iDCG@end"], TEST_SIGMA, device)
+            input(crit)
+            batch_loss = crit.sum() ########srch_id level might be interesting for performance analysis (what kind of srches are easy to predict etc.)
+
+            trn_loss = batch_loss.sum()
+            train_loss += trn_loss
+            print(f"{i}: {trn_loss}")
             optimizer.zero_grad()
             batch_loss.backward()
             optimizer.step()

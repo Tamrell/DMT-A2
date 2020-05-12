@@ -9,7 +9,7 @@ HYPERPARAMETERS = {
     "epochs" : 20,
     "learning_rate" : 1e-3,
     "layers" : 3,
-    "layer_size" : 15,
+    "layer_size" : 50,
     "attention_layer_idx" : -1,  # -1 denotes no attention layer
     "resnet" : False,
 
