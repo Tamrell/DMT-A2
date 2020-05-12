@@ -10,6 +10,9 @@ class DeltaNDCG:
         pass
 
 
+    def get_relevance_array_by_id()
+
+
     def ddcg(self, scores, relevances):
         """
         # reading material:
@@ -57,11 +60,11 @@ class DeltaNDCG:
 
 
 
-class LogisticScoreDifference:
-    def __init__(self, sigma):
-        raise NotImplementedError()
 
-
+def ranknet_cost(scores, precompute_S_arr, sigma):
+    score_unsqueezed = scores.unsqueeze()
+    score_diff = score_unsqueezed - score_unsqueezed.T
+    return precompute_S_arr * score_diff + log(1 + torch.exp(-sigma * score_diff))
 
 
 
