@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from codebase.data_handling import BookingDataset
 from codebase.nn_models import ExodiaNet
+import time
 from codebase import io
 
 
@@ -15,26 +16,47 @@ def train(model, dataset, epochs, learning_rate, device):
     # Setup the loss and optimizer
     model.to(device)
     criterion = None  # lage standaarden
+    criterion = torch.nn.MSELoss() ################################# WANTED TO CHECK :(
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
 
     for epoch in range(epochs):
+
+        # to keep track of batches/second
+        t = time.time()
+
+        train_loss = 0
         for search_id, X, Y, rand_bool in dataset:
             X = X.to(device)
+            Y = Y.to(device)
+
             out = model(X)
-            print(out)
 
+####################### NEW ##################
+######## Do we want initialization loss?
+####### convergence criterium? ######
+            batch_loss = criterion(out, Y)########srch_id level might be interesting for performance analysis (what kind of srches are easy to predict etc.)
+            train_loss += batch_loss.sum()
+            optimizer.zero_grad()
+            batch_loss.backward()
+            optimizer.step()
+##############################################
 
+        validation_loss = 0
         with torch.no_grad():
             for search_id_V, X_V, Y_V, rand_bool_V in dataset.validation_batch_iter():
                 X_V = X_V.to(device)
+                Y_V = Y_V.to(device)
 
+                out_val = model(X_V)
+                validation_loss += criterion(out_val, Y_V).sum()
+        validation_loss /= dataset.val_len
+        print(f"Train Loss: {train_loss/len(dataset)}, Validation Loss: {validation_loss}\nSeconds per epoch: {time.time()-t}")
 
 def train_main(hyperparameters, fold_config):
 
     if fold_config != "k_folds":
 
-        print("\nPreparing Dataset...")
         dataset = BookingDataset(fold_config)
         print("Done")
         model_id = io.add_model(hyperparameters)

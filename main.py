@@ -6,11 +6,11 @@ from codebase import train
 
 
 HYPERPARAMETERS = {
-    "epochs" : 2,
+    "epochs" : 5,
     "learning_rate" : 1e-3,
-    "layers" : 3,
-    "layer_size" : 5,
-    "attention_layer_idx" : -1,  # -1 denotes no attention layer
+    "layers" : 5,
+    "layer_size" : 200,
+    "attention_layer_idx" : 1,  # -1 denotes no attention layer
     "resnet" : False,
 
     # These hyperparameters are not in the commandline arguments.
