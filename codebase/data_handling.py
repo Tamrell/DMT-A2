@@ -14,6 +14,7 @@ class BookingDataset():
         """Class for holding a dataset.
             - Loads in segments to form a predefined fold (segment combination).
         """
+        not_for_train = ["srch_id", "relevance", "random_bool"]
 
         path = os.path.join("data", "train_segments", "train_segment_") ###################### I/O
 
@@ -33,16 +34,20 @@ class BookingDataset():
             val_segment = fold - 1
 
         print(f"Fold: {fold}\nTrain segments: {train_segments}\nValidation segment: {val_segment}")
-        print("\nPreparing Dataset...")
+        print("Shuffling the deck...")#"\nPreparing Dataset...")
         val_df = pd.read_csv(f"{path}{val_segment}.csv")           ###################### I/O
         train_df =  pd.read_csv(f"{path}{train_segments[0]}.csv")  ###################### I/O
+
+        #################### TEST the shift-rescale ################
+        val_df = shift_rescale_columns(val_df, not_for_train)
+        train_df = shift_rescale_columns(train_df, not_for_train)
+        #########################################
+
+
         for segment in train_segments[1:]:
             train_df = train_df.append(pd.read_csv(f"{path}{segment}.csv")) ################ I/O
 
         self.search_no = len(train_df["srch_id"].unique())
-
-        not_for_train = ["srch_id", "relevance", "random_bool"]
-
         self.feature_no = train_df.shape[1] - len(not_for_train)
         self.batches = {}
         self.relevances = {}
@@ -83,6 +88,13 @@ class BookingDataset():
         """Assumes that each batch will contain all rows for a single search id"""
         return self.search_no
 
+def shift_rescale_columns(df, to_skip):
+    for c in df:
+        if c not in to_skip:
+            df[c] -= df[c].mean()
+            df[c] /= df[c].std()
+    return df
+
 
 def preprocessing(train_path="", test_path=""):
     """Preprocesses the data after the first engineered features are added
@@ -115,6 +127,8 @@ def preprocessing(train_path="", test_path=""):
     to_fill = {"prop_review_score": "zero"
               ,"prop_location_score2": "median"
               }
+
+    # to_rescale_and_shift = []
 
     print("Preprocessing training data...")
 

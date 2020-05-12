@@ -24,13 +24,12 @@ class ExodiaNet(nn.Module):
             if i != attention_layer_idx:
                 self.hidden.append(nn.Linear(layer_size, layer_size))
             else:
-                print(f"Using attention at layer {i}")
                 self.hidden.append(AttentionLayer(layer_size, layer_size,
                                                   res=res))
         self.hidden.append(nn.Linear(layer_size, self.out_size))
 
         ################# NEED HE-INIT ###########
-        # n_l = input_size * output_size 
+        # n_l = input_size * output_size
 
     def forward(self, x):
         for layer in self.hidden[:-1]:

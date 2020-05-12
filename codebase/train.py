@@ -51,14 +51,14 @@ def train(model, dataset, epochs, learning_rate, device):
                 out_val = model(X_V)
                 validation_loss += criterion(out_val, Y_V).sum()
         validation_loss /= dataset.val_len
-        print(f"Train Loss: {train_loss/len(dataset)}, Validation Loss: {validation_loss}\nSeconds per epoch: {time.time()-t}")
+        print(f"Train Loss: {train_loss/len(dataset)}, Validation Loss: {validation_loss} (Epoch time: {time.time()-t})")
 
 def train_main(hyperparameters, fold_config):
 
     if fold_config != "k_folds":
 
         dataset = BookingDataset(fold_config)
-        print("Done")
+        print("Done\nDrawing cards... WAIT! IS IT?!?")
         model_id = io.add_model(hyperparameters)
 
         print("Summoning the forbidden one...")
@@ -71,6 +71,7 @@ def train_main(hyperparameters, fold_config):
                           hyperparameters['relu_slope'])
 
         print("Done, It's time to d-d-d-ddd-d-d-d-dduel!")
+        print("ExodiaNet enters the battlefield...")
         train(model,
               dataset,
               hyperparameters["epochs"],
