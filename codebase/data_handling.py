@@ -33,7 +33,7 @@ class BookingDataset():
             val_segment = fold - 1
 
         print(f"Fold: {fold}\nTrain segments: {train_segments}\nValidation segment: {val_segment}")
-
+        print("\nPreparing Dataset...")
         val_df = pd.read_csv(f"{path}{val_segment}.csv")           ###################### I/O
         train_df =  pd.read_csv(f"{path}{train_segments[0]}.csv")  ###################### I/O
         for segment in train_segments[1:]:
@@ -62,6 +62,7 @@ class BookingDataset():
             self.val_relevances[s] = torch.from_numpy(sub_df[["relevance"]].values).float()
             self.val_rand_bools[s] = sub_df["random_bool"].tolist()[0]
 
+        self.val_len = len(self.val_batches)
 
     def get_val(self, key):
         return key, self.val_batches[key], self.val_relevances[key], self.val_rand_bools[key]

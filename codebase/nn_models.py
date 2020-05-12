@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from torch import nn
 
 # ExodiaNet
@@ -23,9 +24,13 @@ class ExodiaNet(nn.Module):
             if i != attention_layer_idx:
                 self.hidden.append(nn.Linear(layer_size, layer_size))
             else:
+                print(f"Using attention at layer {i}")
                 self.hidden.append(AttentionLayer(layer_size, layer_size,
                                                   res=res))
         self.hidden.append(nn.Linear(layer_size, self.out_size))
+
+        ################# NEED HE-INIT ###########
+        # n_l = input_size * output_size 
 
     def forward(self, x):
         for layer in self.hidden[:-1]:
@@ -46,7 +51,7 @@ class AttentionLayer(nn.Module):
 
     def forward(self, x):
         key, query, value = self.weights(x).chunk(3, dim=1)
-        kq = key @ query / torch.sqrt(self.out_size)
+        kq = key @ query.T / np.sqrt(self.out_size)
         kq = self.softmax(kq)
 
         if self.res:
