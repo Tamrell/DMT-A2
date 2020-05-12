@@ -2,6 +2,8 @@ import numpy as np
 import torch
 from codebase.data_handling import BookingDataset
 from codebase.nn_models import ExodiaNet
+from codebase import lambdaCriterion
+from codebase import evaluation
 import time
 from codebase import io
 
@@ -12,13 +14,15 @@ def train(model, dataset, epochs, learning_rate, device):
             - config (?): contains information on hyperparameter settings and such.
             - dataset (Dataset object): dataset with which to train the model.
     """
+    TEST_SIGMA = 1
+    print("TESTING WITH SIGMA=1")
 
     # Setup the loss and optimizer
     model.to(device)
-    criterion = None  # lage standaarden
-    criterion = torch.nn.MSELoss() ################################# WANTED TO CHECK :(
+    criterion = lambdaCriterion.DeltaNDCG("pytorch")  # lage standaarden
+    # criterion = torch.nn.MSELoss() ################################# WANTED TO CHECK :(
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-
+    gt = evaluation.load_ground_truth() ########### HACKS
 
     for epoch in range(epochs):
 
@@ -35,7 +39,7 @@ def train(model, dataset, epochs, learning_rate, device):
 ####################### NEW ##################
 ######## Do we want initialization loss?
 ####### convergence criterium? ######
-            batch_loss = criterion(out, Y)########srch_id level might be interesting for performance analysis (what kind of srches are easy to predict etc.)
+            batch_loss = criterion.compute_loss_torch(out, Y, gt[search_id]["iDCG@end"], TEST_SIGMA, device)########srch_id level might be interesting for performance analysis (what kind of srches are easy to predict etc.)
             train_loss += batch_loss.sum()
             optimizer.zero_grad()
             batch_loss.backward()
@@ -49,7 +53,7 @@ def train(model, dataset, epochs, learning_rate, device):
                 Y_V = Y_V.to(device)
 
                 out_val = model(X_V)
-                validation_loss += criterion(out_val, Y_V).sum()
+                validation_loss += criterion(out_val, Y_V, gt[search_id_V]["iDCG@end"], TEST_SIGMA).sum()
         validation_loss /= dataset.val_len
         print(f"Train Loss: {train_loss/len(dataset)}, Validation Loss: {validation_loss} (Epoch time: {time.time()-t})")
 
