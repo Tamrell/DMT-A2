@@ -42,7 +42,7 @@ def train(model, dataset, epochs, learning_rate, device):
 ######## Do we want initialization loss?
 ####### convergence criterium? ######
             crit = criterion.compute_loss_torch(out, Y, gt[search_id]["iDCG@end"], TEST_SIGMA, device)
-            input(crit)
+            # input(crit)
             batch_loss = crit.sum() ########srch_id level might be interesting for performance analysis (what kind of srches are easy to predict etc.)
 
             trn_loss = batch_loss.sum()
@@ -61,7 +61,7 @@ def train(model, dataset, epochs, learning_rate, device):
                 Y_V = Y_V.to(device)
 
                 out_val = model(X_V)
-                validation_loss += criterion(out_val, Y_V, gt[search_id_V]["iDCG@end"], TEST_SIGMA).sum()
+                validation_loss += criterion.compute_loss_torch(out_val, Y_V, gt[search_id_V]["iDCG@end"], TEST_SIGMA, device).sum()
         validation_loss /= dataset.val_len
         print(f"Train Loss: {train_loss/len(dataset)}, Validation Loss: {validation_loss} (Epoch time: {time.time()-t})")
 

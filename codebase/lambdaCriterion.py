@@ -15,7 +15,17 @@ class DeltaNDCG:
     def compute_loss_torch(self, scores, relevances,  iDCG, sigma, device):
         precompute_S_arr = s_tensor(relevances, sigma).to(device)
         relevances_tensor = self.make_relevance_nominator_torch(relevances)
-        return  torch.mul(self.ranknet_cost_torch(scores, precompute_S_arr, sigma), self.dNDCG_torch(scores, relevances_tensor, iDCG)).sum(dim=1)
+        # print("precompute_S_arr", precompute_S_arr)
+        # print("sigma", sigma)
+        # print("scores", scores)
+        # print("relevances_tensor", relevances_tensor)
+        # print("iDCG", iDCG)
+        rnet_cost = self.ranknet_cost_torch(scores, precompute_S_arr, sigma)
+        dndcg = self.dNDCG_torch(scores, relevances_tensor, iDCG)
+        # print("rnet_cost", rnet_cost)
+        # print("dndcg", dndcg) # not finished
+        # input()
+        return  torch.mul(rnet_cost, dndcg).sum(dim=1)
 
 
     def compute_loss_numpy(self, scores, relevances, iDCG, sigma):
@@ -45,11 +55,14 @@ class DeltaNDCG:
             return torch.stack([relevances for _ in range(num_items)])
 
     def dNDCG_torch(self, scores, relevances_tensor, iDCG):
+        # print("relevances_tensor.size()", relevances_tensor.size())
         num_items = relevances_tensor.size()[0]
         rank_values = torch_rank_1d(scores).float()
-        denominator = 1/torch.log(rank_values + 1)
+        denominator = 1./torch.log2(rank_values + 1)
         rank_denominator_tensor = torch.stack([denominator for _ in range(num_items)])
-
+        # print("rank_denominator_tensor", rank_denominator_tensor)
+        # print("rank_denominator_tensor.size()", rank_denominator_tensor.size())
+        # print("rank_values", rank_values)
         return (torch.mul(relevances_tensor, rank_denominator_tensor) - torch.mul(relevances_tensor, rank_denominator_tensor.T))/iDCG
 
 
@@ -63,14 +76,19 @@ class DeltaNDCG:
 
 
     def ranknet_cost_torch(self, scores, precompute_S_arr, sigma):
-        score_unsqueezed = scores.unsqueeze(0)
+        score_unsqueezed = scores
         score_diff = score_unsqueezed - score_unsqueezed.T
         return precompute_S_arr * score_diff + torch.log(1 + torch.exp(-sigma * score_diff))
 
 
     def ranknet_cost_numpy(self, scores, precompute_S_arr, sigma):
+        """ Todo: check shapes
+
+        """
         score_unsqueezed = scores.unsqueeze()
+        print("score_unsqueezed", score_unsqueezed)
         score_diff = score_unsqueezed - score_unsqueezed.T
+        print("score_diff", score_diff)
         return precompute_S_arr * score_diff + np.log(1 + np.exp(-sigma * score_diff))
 
 def s_array(vals, sigma):
@@ -102,6 +120,10 @@ def torch_rank_1d(values):
 
     Todo test this
     """
+    values = values.squeeze()
+    # print("got scores", values)
+    # print("argsort(scores)", torch.argsort(values, descending=True))
+    # print("argsort(argsort(scores))", torch.argsort(torch.argsort(values, descending=True)))
     return torch.argsort(torch.argsort(values, descending=True)) + 1
 
 
@@ -112,6 +134,6 @@ def numpy_rank_1d(values):
         values = [6,5,7,8,1]
         ranking = [3,2,4,5,1]
 
-    Todo: test this
+    Todo: test this, possibly needs squeeze
     """
     return numpy.argsort(numpy.argsort(values, descending=True)) + 1
