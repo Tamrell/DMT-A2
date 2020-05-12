@@ -31,8 +31,12 @@ def train(model, dataset, epochs, learning_rate, device):
 
         train_loss = 0
         i = 0
+        kek0=0
         for search_id, X, Y, rand_bool in dataset:
             i+=1
+            if not gt[search_id]["iDCG@end"]:
+                kek0+=1
+                continue
             X = X.to(device)
             Y = Y.to(device)
 
@@ -47,7 +51,7 @@ def train(model, dataset, epochs, learning_rate, device):
 
             trn_loss = batch_loss.sum()
             train_loss += trn_loss
-            print(f"{i}: {trn_loss}")
+            print(f"{i}: {trn_loss}", end="\r")
             optimizer.zero_grad()
             batch_loss.backward()
             optimizer.step()
@@ -56,14 +60,18 @@ def train(model, dataset, epochs, learning_rate, device):
 
         validation_loss = 0
         with torch.no_grad():
+            kek=0
             for search_id_V, X_V, Y_V, rand_bool_V in dataset.validation_batch_iter():
+                if not gt[search_id]["iDCG@end"]:
+                    kek+=1
+                    continue
                 X_V = X_V.to(device)
                 Y_V = Y_V.to(device)
 
                 out_val = model(X_V)
-                validation_loss += criterion.compute_loss_torch(out_val, Y_V, gt[search_id_V]["iDCG@end"], TEST_SIGMA, device).sum()
-        validation_loss /= dataset.val_len
-        print(f"Train Loss: {train_loss/len(dataset)}, Validation Loss: {validation_loss} (Epoch time: {time.time()-t})")
+                validation_loss += criterion.compute_loss_torch(out_val, Y_V, gt[search_id_V]["iDCG@end"], TEST_SIGMA, device).abs().sum()
+        validation_loss /= (dataset.val_len - kek)
+        print(f"Train Loss: {train_loss/(len(dataset)-kek0)}, Validation Loss: {validation_loss} (Epoch time: {time.time()-t})")
 
 def train_main(hyperparameters, fold_config):
 

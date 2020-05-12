@@ -95,7 +95,8 @@ def s_array(vals, sigma):
     return 0.5*sigma - np.array([[s_value(v1, v2) for v2 in vals] for v1 in vals])*(0.5*sigma)
 
 def s_tensor(vals, sigma):
-    return 0.5*sigma - torch.FloatTensor([[s_value(v1, v2) for v2 in vals] for v1 in vals])*(0.5*sigma)
+    return 0.5*sigma - (vals-vals.T).sign()*(0.5*sigma)
+    # return 0.5*sigma - torch.FloatTensor([[s_value(v1, v2) for v2 in vals] for v1 in vals])*(0.5*sigma)
 
 def s_value(v1, v2):
     """calculates S value:
