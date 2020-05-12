@@ -63,35 +63,6 @@ class LogisticScoreDifference:
 
 
 
-class ArrayModuleFunctions:
-
-    """ Short class to redirect function calls to either pytorch or numpy.
-
-    raison d'etre: numpy and pytorch have broadly the smae functions, yet sometimes with different names.
-
-    Returns
-    -------
-    function redirect class
-        Description of returned object.
-
-    """
-    def __init__(self, module):
-        if module == "torch":
-            self.mul = self.torch_mul
-            # raise NotImplementedError()
-        elif module == 'numpy':
-            raise NotImplementedError()
-        else:
-            ValueError(f"incorrect module specified, expected 'torch' of 'numpy', got {module}")
-
-    @staticmethod
-    def torch_mul(a, b):
-        return torch.mul(a, b)
-
-
-
-
-
 
 
 def torch_rank_1d(values):
@@ -100,6 +71,8 @@ def torch_rank_1d(values):
     ranking is in descending order, e.g:
         values = [6,5,7,8,1]
         ranking = [3,2,4,5,1]
+
+    Todo test this
     """
     return torch.argsort(torch.argsort(values, descending=True)) + 1
 
