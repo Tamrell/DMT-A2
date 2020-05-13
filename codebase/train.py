@@ -72,9 +72,9 @@ def train(model, dataset, hyperparameters):
         # plt.show()
 
         val_ndcg = list()
-        pred_string = "srch_id,prop_id\n"
         with torch.no_grad():
             kek=0
+            pred_string = "srch_id,prop_id\n"
             for search_id_V, X_V, Y_V, rand_bool_V, props_V in dataset.validation_batch_iter():
                 if not gt[search_id]["iDCG@end"]:
                     kek+=1
@@ -92,7 +92,7 @@ def train(model, dataset, hyperparameters):
                 crit, denominator = criterion.compute_loss_torch(out_val, Y_V, gt[search_id_V]["iDCG@end"], TEST_SIGMA, device)
                 idx = torch.argsort(denominator.squeeze(), descending=True)[:5]
                 val_ndcg.append(((denominator[idx] @ Y_V[idx])/gt[search_id]["iDCG@5"]).item())
-
+            io.save_prediction(model_id, pred_string)
 
         model_id = io.add_model(hyperparameters)
         io.save_model(model_id, model)
