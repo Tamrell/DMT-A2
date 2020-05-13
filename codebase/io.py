@@ -11,7 +11,7 @@ VALIDATION_DIR = os.path.join("results", "validation_predictions")
 TEST_DIR = os.path.join("results", "test_predictions")
 
 # Make sure to add any new directories you make to this loop.
-for directory in (MODEL_DIR, LOG_DIR, PREDICTIONS_DIR):
+for directory in (MODEL_DIR, LOG_DIR, VALIDATION_DIR, TEST_DIR):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
