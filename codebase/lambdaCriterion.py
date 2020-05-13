@@ -114,7 +114,7 @@ class DeltaNDCG:
         score_dif_norm = torch.norm(score_diff)
 
         log_exp_part = torch.log(1 + torch.exp(-sigma * (score_diff/score_dif_norm)))
-        RNCost = precompute_S_arr * score_diff + log_exp_part
+        RNCost = precompute_S_arr * score_diff/score_dif_norm + log_exp_part
 
 
         if torch.sum(torch.isnan(RNCost)):

@@ -14,7 +14,7 @@ class BookingDataset():
         """Class for holding a dataset.
             - Loads in segments to form a predefined fold (segment combination).
         """
-        not_for_train = ["srch_id", "relevance", "random_bool"]
+        not_for_train = ["srch_id", "relevance", "random_bool", "prop_id"]
 
         path = os.path.join("data", "train_segments", "train_segment_") ###################### I/O
 
@@ -50,27 +50,31 @@ class BookingDataset():
         self.search_no = len(train_df["srch_id"].unique())
         self.feature_no = train_df.shape[1] - len(not_for_train)
         self.batches = {}
+        self.props = {}
         self.relevances = {}
         self.rand_bools = {}
         self.val_batches = {}
         self.val_relevances = {}
         self.val_rand_bools = {}
+        self.val_props = {}
 
         # Precompute batches
         for s, sub_df in train_df.groupby("srch_id"):
             self.batches[s] = torch.from_numpy(sub_df.drop(columns=not_for_train).values).float()
             self.relevances[s] = torch.from_numpy(sub_df[["relevance"]].values).float()
             self.rand_bools[s] = sub_df["random_bool"].tolist()[0]
+            self.props[s] = torch.from_numpy(sub_df[["prop_id"]].values)
 
         for s, sub_df in val_df.groupby("srch_id"):
             self.val_batches[s] = torch.from_numpy(sub_df.drop(columns=not_for_train).values).float()
             self.val_relevances[s] = torch.from_numpy(sub_df[["relevance"]].values).float()
             self.val_rand_bools[s] = sub_df["random_bool"].tolist()[0]
+            self.val_props[s] = torch.from_numpy(sub_df[["prop_id"]].values)
 
         self.val_len = len(self.val_batches)
 
     def get_val(self, key):
-        return key, self.val_batches[key], self.val_relevances[key], self.val_rand_bools[key]
+        return key, self.val_batches[key], self.val_relevances[key], self.val_rand_bools[key], self.val_props[key]
 
     def validation_batch_iter(self):
         for i in self.val_batches.keys():
@@ -78,7 +82,7 @@ class BookingDataset():
 
     def __getitem__(self, key):
         # label, I mean we have the key and probably the ground truth... do we want this inside this module or outside?
-        return key, self.batches[key], self.relevances[key], self.rand_bools[key]
+        return key, self.batches[key], self.relevances[key], self.rand_bools[key], self.props[key]
 
     def __iter__(self):
         for i in np.random.permutation(list(self.batches.keys())):
@@ -297,7 +301,10 @@ def occurrence_based_conversion(df, column):
     count = df[column].value_counts()
     for i, (val, c) in enumerate(zip(count.index, count)):
         conversion_dict[val] = i+1
-    df[column] = df[column].map(conversion_dict)
+    if column == "prop_id":
+        df["prop_occ"] = df[column].map(conversion_dict)
+    else:
+        df[column] = df[column].map(conversion_dict)
     return df
 
 
@@ -427,9 +434,9 @@ def load_test(path=os.path.join("data", "test_set_VU_DM.csv")):
 
 
 if __name__ == '__main__':
-    # preprocessing()
-    dataset = BookingDataset(5)
-
-    # dataset = BookingDataset("dummy")
-    for i in dataset:
-        input(i)
+    preprocessing()
+    # dataset = BookingDataset(5)
+    #
+    # # dataset = BookingDataset("dummy")
+    # for i in dataset:
+    #     input(i)
