@@ -1,4 +1,7 @@
 from argparse import ArgumentParser
+from codebase.data_handling import preprocessing
+from codebase.evaluation import ndcg
+from codebase import io
 import os
 import torch
 
@@ -6,12 +9,12 @@ from codebase import train
 
 
 HYPERPARAMETERS = {
-    "epochs" : 20,
+    "epochs" : 500,
     "learning_rate" : 1e-3,
-    "layers" : 3,
-    "layer_size" : 50,
-    "attention_layer_idx" : -1,  # -1 denotes no attention layer
-    "resnet" : False,
+    "layers" : 2,
+    "layer_size" : 15,
+    "attention_layer_idx" : 1,  # -1 denotes no attention layer
+    "resnet" : True,
 
     # These hyperparameters are not in the commandline arguments.
     "device" : None,
@@ -30,6 +33,10 @@ def parse_arguments():
         parser.add_argument("--" + hyperparameter, type=type(default_value))
 
     parser.add_argument("--dummy", action="store_true")
+
+    parser.add_argument("--preprocess", action="store_true")
+
+    parser.add_argument("--ndcg", help="Calculate ndcg of validation predictions by model <input>")
 
     return parser.parse_args()
 
@@ -54,7 +61,14 @@ def set_device():
 def main(ARGS):
     global HYPERPARAMETERS
 
-    if ARGS.train:
+    if ARGS.preprocess:
+        preprocessing()
+
+    elif ARGS.ndcg:
+        val_ndcg = ndcg(io.load_val_predictions(ARGS.ndcg))
+        print(f"Validation ndcg of model {ARGS.ndcg}: {val_ndcg}")
+
+    elif ARGS.train:
         for key in HYPERPARAMETERS:
             value = eval(f"ARGS.{key}")
             assert value, f"missing value for {key}."
