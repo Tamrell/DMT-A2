@@ -72,6 +72,7 @@ def train(model, dataset, hyperparameters):
         d_hist.update(trn_ndcg)
 
         val_ndcg = list()
+        pred_string = "srch_id,prop_id\n"
         with torch.no_grad():
             kek=0
             for search_id_V, X_V, Y_V, rand_bool_V, props_V in dataset.validation_batch_iter():
@@ -85,6 +86,8 @@ def train(model, dataset, hyperparameters):
                 out_val = model(X_V)
 
                 ranking_prediction_val = prediction_to_property_ranking(out_val, props_V)
+                for prop in ranking_prediction_val:
+                    pred_string += f"{search_id}, {prop.item()}\n"
 
                 crit, denominator = criterion.compute_loss_torch(out_val, Y_V, gt[search_id_V]["iDCG@end"], TEST_SIGMA, device)
                 idx = torch.argsort(denominator.squeeze(), descending=True)[:5]
@@ -97,10 +100,8 @@ def train(model, dataset, hyperparameters):
 
 
 def prediction_to_property_ranking(prediction, properties):
-    ranking = properties[torch.argsort(torch.argsort(prediction, descending=True))]
-    print(ranking)
-    input()
-    return ranking
+    ranking = properties[torch.argsort(torch.argsort(prediction.squeeze(), descending=True))]
+    return ranking.squeeze()
 
 def train_main(hyperparameters, fold_config):
 
