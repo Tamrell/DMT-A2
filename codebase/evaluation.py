@@ -8,7 +8,7 @@ from progressbar import progressbar
 def ndcg(pred_df, at=5):
     """Calculates the normalized discounted cumulative gain (by default: at 5)
         Args:
-            - gt_fg (DataFrame): dataframe with ground truth ordering
+            - gt_fg (DataFrame): dataframe with ground truth data
             - pred_df (DataFrame): dataframe containing predictions
 
         Returns:
@@ -17,46 +17,22 @@ def ndcg(pred_df, at=5):
     """
     gt_dict = load_ground_truth()
     ndcg_list = []
-    logs = {i:np.log2(i+2) for i in range(at)}
+    logs = {i:1/np.log2(i+2) for i in range(at)}
 
     searches = len(pred_df["srch_id"].unique())
     grouped_pred = pred_df.groupby(by="srch_id")
 
     print("Calculating NDCG...")
     for s, sub_pred in progressbar(grouped_pred, max_value=searches):
-        s = int(s)
         dcg = 0
         for i, p in enumerate(sub_pred["prop_id"]):
             # print(gt_dict)[s]
-            if i == at:
-                break
-            try:
-                dcg += gt_dict[s][p] / logs[i]
-            except:
-                print(gt_dict[s])
-                print(p)
-        print(dcg)
+            if i < at:
+                dcg += gt_dict[s][p] * logs[i]
         ndcg_list.append(dcg / gt_dict[s]["iDCG@5"])
-    print(ndcg_list)
     return np.mean(ndcg_list)
 
-
-def compare_performance(model_list):
-    #do we want this? I think it could be done more easily after the _results_ are saved in the general results csv
-    pass
 
 
 def load_ground_truth(path=os.path.join("data", "ground truth.p")):
     return pk.load(open(path, "rb"))
-
-def load_predictions(path=os.path.join("benchmark_results", "benchmark V0 predictions.csv"), model_name="Benchmark V5"):
-    return pd.read_csv(path)
-
-
-if __name__ == '__main__':
-    # Load predictions and ground truth
-    pred = load_predictions()
-
-    # print results for the predictions
-    print(ndcg(pred))
-    # print(ndcg(gt, pred2))

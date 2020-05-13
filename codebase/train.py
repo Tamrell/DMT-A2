@@ -76,7 +76,7 @@ def train(model, dataset, hyperparameters):
             kek=0
             pred_string = "srch_id,prop_id\n"
             for search_id_V, X_V, Y_V, rand_bool_V, props_V in dataset.validation_batch_iter():
-                if not gt[search_id]["iDCG@end"]:
+                if not gt[search_id_V]["iDCG@end"]:
                     kek+=1
                     continue
 
