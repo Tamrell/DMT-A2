@@ -74,7 +74,7 @@ class BookingDataset():
         self.val_len = len(self.val_batches)
 
     def get_val(self, key):
-        return key, self.val_batches[key], self.val_relevances[key], self.val_rand_bools[key], self.props[key]
+        return key, self.val_batches[key], self.val_relevances[key], self.val_rand_bools[key], self.val_props[key]
 
     def validation_batch_iter(self):
         for i in self.val_batches.keys():
@@ -82,7 +82,7 @@ class BookingDataset():
 
     def __getitem__(self, key):
         # label, I mean we have the key and probably the ground truth... do we want this inside this module or outside?
-        return key, self.batches[key], self.relevances[key], self.rand_bools[key], self.val_props[key]
+        return key, self.batches[key], self.relevances[key], self.rand_bools[key], self.props[key]
 
     def __iter__(self):
         for i in np.random.permutation(list(self.batches.keys())):
