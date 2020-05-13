@@ -34,7 +34,7 @@ def train(model, dataset, epochs, learning_rate, device):
         trn_ndcg = list()
         losses = []
 
-        for search_id, X, Y, rand_bool in dataset:
+        for search_id, X, Y, rand_bool, props in dataset:
             if not gt[search_id]["iDCG@end"]:
                 continue
             i += 1
@@ -59,19 +59,21 @@ def train(model, dataset, epochs, learning_rate, device):
             batch_loss = crit.sum() ########srch_id level might be interesting for performance analysis (what kind of srches are easy to predict etc.)
             if i > 99 and i%100 == 0:
                 print(f"{i}: {np.mean(trn_ndcg[-100:])}, loss: {np.mean(losses[-100:])}", end="\r")
-                 
+
             batch_loss.backward()
             optimizer.step()
 
 
 ##############################################
         # print("Exodia has gotten even stronger! (hopefully)")
-        # plt.plot(trn_ndcg)
-        # plt.show()
+
+        plt.hist(trn_ndcg, bins=np.arange(-0.01, 1.01, 0.01))
+        plt.show()
+
         val_ndcg = list()
         with torch.no_grad():
             kek=0
-            for search_id_V, X_V, Y_V, rand_bool_V in dataset.validation_batch_iter():
+            for search_id_V, X_V, Y_V, rand_bool_V, props_V in dataset.validation_batch_iter():
                 if not gt[search_id]["iDCG@end"]:
                     kek+=1
                     continue
@@ -80,10 +82,19 @@ def train(model, dataset, epochs, learning_rate, device):
                 Y_V = Y_V.to(device)
 
                 out_val = model(X_V)
+
+                ranking_prediction_val = prediction_to_property_ranking(out_val, props_V)
+
                 crit, denominator = criterion.compute_loss_torch(out_val, Y_V, gt[search_id_V]["iDCG@end"], TEST_SIGMA, device)
                 idx = torch.argsort(denominator.squeeze(), descending=True)[:5]
                 val_ndcg.append(((denominator[idx] @ Y_V[idx])/gt[search_id]["iDCG@5"]).item())
-        print(f"Train NDCG: {np.mean(trn_ndcg):5}, Validation NDCG: {np.mean(val_ndcg):5}, t loss: {np.mean(losses):5} (Epoch time: {time.time()-t})")
+        print(f"Train NDCG: {np.mean(trn_ndcg):5f}, Validation NDCG: {np.mean(val_ndcg):5f}, t loss: {np.mean(losses):5f} (Epoch time: {time.time()-t})")
+
+def prediction_to_property_ranking(prediction, properties):
+    ranking = properties[torch.argsort(torch.argsort(prediction, descending=True))]
+    print(ranking)
+    input()
+    return ranking
 
 
 def train_main(hyperparameters, fold_config):

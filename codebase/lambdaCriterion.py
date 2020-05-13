@@ -1,6 +1,9 @@
 import numpy as np
 import torch
 
+torch.set_printoptions(threshold=10000)
+
+
 class DeltaNDCG:
     def __init__(self, module):
         if module == "numpy":
@@ -57,13 +60,29 @@ class DeltaNDCG:
         denominator = 1./torch.log2(rank_values + 1)
         rank_denominator_tensor = torch.stack([denominator for _ in range(num_items)])
 
-        original = torch.mul(relevances_tensor, rank_denominator_tensor)
-        after_swap = torch.mul(relevances_tensor, rank_denominator_tensor.T)
+        relevances_tensor = relevances_tensor.squeeze()
+
+        direct_delta_denominator = torch.abs(rank_denominator_tensor - rank_denominator_tensor.T)
+        direct_delta_nominator = relevances_tensor - relevances_tensor.T
+
+        # print(direct_delta_denominator)
+        # print("direct_delta_nominator")
+        # print(direct_delta_nominator)
+        # #
+        # input()
+
+        # original = torch.mul(relevances_tensor, rank_denominator_tensor)
+        # after_swap = torch.mul(relevances_tensor, rank_denominator_tensor.T)
+
         # print("rank_denominator_tensor", rank_denominator_tensor)
         # print("rank_denominator_tensor.size()", rank_denominator_tensor.size())
         # print("rank_values", rank_values)
+
         # return (torch.mul(relevances_tensor, rank_denominator_tensor) - torch.mul(relevances_tensor, rank_denominator_tensor.T))/iDCG
-        return (original + original.T) - (after_swap + after_swap.T), denominator
+
+        # return ((original + original.T) - (after_swap + after_swap.T))/iDCG, denominator
+
+        return torch.mul(direct_delta_denominator, direct_delta_nominator)/iDCG, denominator
 
 
     def dNDCG_numpy(self, scores, relevances_array, iDCG):
