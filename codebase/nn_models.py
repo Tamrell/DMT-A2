@@ -9,7 +9,7 @@ from torch import nn
 class ExodiaNet(nn.Module):
     """THE FORBIDDEN ONE"""
 
-    def __init__(self, model_id, in_size, layer_size, layers,
+    def __init__(self, in_size, layer_size, layers,
                  attention_layer_idx, res, relu_slope):
         super().__init__()
 
@@ -17,7 +17,6 @@ class ExodiaNet(nn.Module):
         self.out_size = 1
         self.activation = nn.LeakyReLU(relu_slope)
         self.hidden = nn.ModuleList()
-        self.model_id = model_id
 
         self.hidden.append(nn.Linear(self.in_size, layer_size))
         for i in range(layers - 1):

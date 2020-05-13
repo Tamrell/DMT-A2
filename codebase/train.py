@@ -9,7 +9,7 @@ import time
 from codebase import io
 
 
-def train(model, dataset, epochs, learning_rate, device):
+def train(model, dataset, hyperparameters):
     """Trains the model on the given dataset
         Args:
             - config (?): contains information on hyperparameter settings and such.
@@ -19,13 +19,14 @@ def train(model, dataset, epochs, learning_rate, device):
     print(f"TESTING WITH SIGMA={TEST_SIGMA}")###################################3
 
     # Setup the loss and optimizer
+    device = hyperparameters['device']
     model.to(device)
     criterion = lambdaCriterion.DeltaNDCG("pytorch")  # lage standaarden
     # criterion = torch.nn.MSELoss() ################################# WANTED TO CHECK :(
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=hyperparameters['learning_rate'])
     gt = evaluation.load_ground_truth() ########### HACKS
 
-    for epoch in range(epochs):
+    for epoch in range(hyperparameters['epochs']):
 
         # to keep track of batches/second
         t = time.time()
@@ -58,7 +59,7 @@ def train(model, dataset, epochs, learning_rate, device):
             # input(crit)
             batch_loss = crit.sum() ########srch_id level might be interesting for performance analysis (what kind of srches are easy to predict etc.)
             if i > 99 and i%100 == 0:
-                print(f"{i}: {np.mean(trn_ndcg[-100:])}, loss: {np.mean(losses[-100:])}", end="\r")
+                print(f"{i}: {np.mean(trn_ndcg[-100:])}, loss: {np.mean(losses[-100:])}      ", end="\r")
 
             batch_loss.backward()
             optimizer.step()
@@ -88,7 +89,12 @@ def train(model, dataset, epochs, learning_rate, device):
                 crit, denominator = criterion.compute_loss_torch(out_val, Y_V, gt[search_id_V]["iDCG@end"], TEST_SIGMA, device)
                 idx = torch.argsort(denominator.squeeze(), descending=True)[:5]
                 val_ndcg.append(((denominator[idx] @ Y_V[idx])/gt[search_id]["iDCG@5"]).item())
-        print(f"Train NDCG: {np.mean(trn_ndcg):5f}, Validation NDCG: {np.mean(val_ndcg):5f}, t loss: {np.mean(losses):5f} (Epoch time: {time.time()-t})")
+
+
+        model_id = io.add_model(hyperparameters)
+        io.save_model(model_id, model)
+        print(f"Train NDCG: {np.mean(trn_ndcg):5f}, Validation NDCG: {np.mean(val_ndcg):5f}, t loss: {np.mean(losses):5f}, model_id: {model_id}, (Epoch time: {time.time()-t:5f})")
+
 
 def prediction_to_property_ranking(prediction, properties):
     ranking = properties[torch.argsort(torch.argsort(prediction, descending=True))]
@@ -96,18 +102,14 @@ def prediction_to_property_ranking(prediction, properties):
     input()
     return ranking
 
-
 def train_main(hyperparameters, fold_config):
 
     if fold_config != "k_folds":
 
         dataset = BookingDataset(fold_config)
         print("Done\nDrawing cards... WAIT! IS IT?!?")
-        model_id = io.add_model(hyperparameters)
-
         print("Summoning the forbidden one...")
-        model = ExodiaNet(model_id,
-                          dataset.feature_no,
+        model = ExodiaNet(dataset.feature_no,
                           hyperparameters['layer_size'],
                           hyperparameters['layers'],
                           hyperparameters['attention_layer_idx'],
@@ -118,17 +120,13 @@ def train_main(hyperparameters, fold_config):
         print("ExodiaNet enters the battlefield...")
         train(model,
               dataset,
-              hyperparameters["epochs"],
-              hyperparameters["learning_rate"],
-              hyperparameters["device"])
+              hyperparameters)
         return
 
     K = 10
     for fold_no in range(1, K + 1):
         dataset = BookingDataset(fold_no)
-        model_id = io.add_model(hyperparameters)
-        model = ExodiaNet(model_id,
-                          dataset.feature_no,
+        model = ExodiaNet(dataset.feature_no,
                           hyperparameters['layer_size'],
                           hyperparameters['layers'],
                           hyperparameters['attention_layer_idx'],
@@ -136,7 +134,5 @@ def train_main(hyperparameters, fold_config):
                           hyperparameters['relu_slope'])
         train(model,
               dataset,
-              hyperparameters["epochs"],
-              hyperparameters["learning_rate"],
-              hyperparameters["device"])
+              hyperparameters)
     return
