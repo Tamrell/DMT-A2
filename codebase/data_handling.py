@@ -35,8 +35,8 @@ class BookingDataset():
 
         print(f"Fold: {fold}\nTrain segments: {train_segments}\nValidation segment: {val_segment}")
         print("Shuffling the deck...")#"\nPreparing Dataset...")
-        val_df = pd.read_csv(f"{path}{val_segment}.csv")           ###################### I/O
-        train_df =  pd.read_csv(f"{path}{train_segments[0]}.csv")  ###################### I/O
+        val_df = pd.read_csv(f"{path}{val_segment}.csv", nrows=2000)           ###################### I/O
+        train_df =  pd.read_csv(f"{path}{train_segments[0]}.csv", nrows=2000)  ###################### I/O
 
         #################### TEST the shift-rescale ################
         val_df = shift_rescale_columns(val_df, not_for_train)

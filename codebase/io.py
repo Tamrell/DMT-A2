@@ -1,12 +1,15 @@
 import os
 import pandas as pd
+import torch
+
+import pickle
 
 # An exhaustive list of directories where result documents are saved.
 MODEL_DIR = os.path.join("results", "models")
 LOG_DIR = os.path.join("results", "logs")
 PREDICTIONS_DIR = os.path.join("results", "predictions")
 
-# Make sure to add any new directories to this tuple.
+# Make sure to add any new directories you make to this loop.
 for directory in (MODEL_DIR, LOG_DIR, PREDICTIONS_DIR):
     if not os.path.exists(directory):
         os.makedirs(directory)
@@ -62,15 +65,14 @@ def get_model_ids(hyperparam_dict):
     return list(df.index)
 
 
-def save_predictions(model_id, pred_str):
-    with open(os.path.join(PREDICTIONS_DIR, str(model_id) + ".pred"),
-              'w') as pred_f:
-        pred_f.write(pred_str)
+def save_model(model_id, model):
+    with open(os.path.join(MODEL_DIR, f"{model_id}.pkl"), 'wb') as save_f:
+        pickle.dump(model, save_f)
 
 
-def load_predictions(model_id):
-    with open(os.path.join(PREDICTIONS_DIR, str(model_id) + ".pred")) as pred_f:
-        return pred_f.readlines()
+def load_model(model_id):
+    with open(os.path.join(MODEL_DIR, f"{model_id}.pkl")) as load_f:
+        return pickle.load(load_f)
 
 
 TRACKING_DF = get_tracking_df()
@@ -82,6 +84,6 @@ if __name__ == "__main__":
     model_id = add_model(hyperparam)
 
     # Note that you can have a model id as soon as you know the hyperparameters.
-    pred_str = "Very good predictions, also very impressed.csv"
-    save_predictions(model_id, pred_str)
+    model = "Very good predictions, also very impressed.csv"
+    save_model(model_id, model)
 
