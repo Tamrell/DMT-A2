@@ -15,7 +15,7 @@ def ndcg(pred_df, at=5):
             - NDCG (float): normalized discounted cumulative gain as described
                             in blog post
     """
-    gt = load_ground_truth()
+    gt_dict = load_ground_truth()
     ndcg_list = []
     logs = {i:np.log2(i+2) for i in range(at)}
 
@@ -24,12 +24,20 @@ def ndcg(pred_df, at=5):
 
     print("Calculating NDCG...")
     for s, sub_pred in progressbar(grouped_pred, max_value=searches):
+        s = int(s)
         dcg = 0
         for i, p in enumerate(sub_pred["prop_id"]):
+            # print(gt_dict)[s]
             if i == at:
                 break
-            dcg += gt_dict[s][p] / logs[i]
+            try:
+                dcg += gt_dict[s][p] / logs[i]
+            except:
+                print(gt_dict[s])
+                print(p)
+        print(dcg)
         ndcg_list.append(dcg / gt_dict[s]["iDCG@5"])
+    print(ndcg_list)
     return np.mean(ndcg_list)
 
 

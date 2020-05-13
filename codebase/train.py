@@ -25,7 +25,7 @@ def train(model, dataset, hyperparameters):
     # criterion = torch.nn.MSELoss() ################################# WANTED TO CHECK :(
     optimizer = torch.optim.Adam(model.parameters(), lr=hyperparameters['learning_rate'])
     gt = evaluation.load_ground_truth() ########### HACKS
-    d_hist = DynamicHistogram()
+    # d_hist = DynamicHistogram()
 
     for epoch in range(hyperparameters['epochs']):
 
@@ -69,7 +69,7 @@ def train(model, dataset, hyperparameters):
 ##############################################
         # print("Exodia has gotten even stronger! (hopefully)")
 
-        d_hist.update(trn_ndcg)
+        # d_hist.update(trn_ndcg)
 
         val_ndcg = list()
         with torch.no_grad():
@@ -87,14 +87,14 @@ def train(model, dataset, hyperparameters):
 
                 ranking_prediction_val = prediction_to_property_ranking(out_val, props_V)
                 for prop in ranking_prediction_val:
-                    pred_string += f"{search_id}, {prop.item()}\n"
+                    pred_string += f"{search_id_V}, {prop.item()}\n"
 
                 crit, denominator = criterion.compute_loss_torch(out_val, Y_V, gt[search_id_V]["iDCG@end"], TEST_SIGMA, device)
                 idx = torch.argsort(denominator.squeeze(), descending=True)[:5]
-                val_ndcg.append(((denominator[idx] @ Y_V[idx])/gt[search_id]["iDCG@5"]).item())
-            io.save_prediction(model_id, pred_string)
+                val_ndcg.append(((denominator[idx] @ Y_V[idx])/gt[search_id_V]["iDCG@5"]).item())
 
         model_id = io.add_model(hyperparameters)
+        io.save_val_predictions(model_id, pred_string)
         io.save_model(model_id, model)
         print(f"Train NDCG: {np.mean(trn_ndcg):5f}, Validation NDCG: {np.mean(val_ndcg):5f}, t loss: {np.mean(losses):5f}, model_id: {model_id}, (Epoch time: {time.time()-t:5f})")
 
