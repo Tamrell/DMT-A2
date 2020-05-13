@@ -23,7 +23,8 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
     model.to(device)
     criterion = lambdaCriterion.DeltaNDCG("pytorch")  # lage standaarden
     # criterion = torch.nn.MSELoss() ################################# WANTED TO CHECK :(
-    optimizer = torch.optim.Adam(model.parameters(), lr=hyperparameters['learning_rate'])
+    # optimizer = torch.optim.Adam(model.parameters(), lr=hyperparameters['learning_rate'])
+    optimizer = torch.optim.SGD(model.parameters(), lr=hyperparameters['learning_rate'], momentum=0.9)
     gt = evaluation.load_ground_truth() ########### HACKS
     d_hist = DynamicHistogram(dynamic_hist)
 
@@ -36,6 +37,8 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
         trn_ndcg = list()
         losses = []
 
+        scores_scores_scores = []
+        inddddd = []
         for search_id, X, Y, rand_bool, props in dataset:
             if not gt[search_id]["iDCG@end"]:
                 continue
@@ -45,6 +48,7 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
             optimizer.zero_grad()
 
             out = model(X)
+
 
 ####################### NEW ##################
 ######## Do we want initialization loss?
@@ -60,10 +64,22 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
             # input(crit)
             batch_loss = crit.sum() ########srch_id level might be interesting for performance analysis (what kind of srches are easy to predict etc.)
             if i > 99 and i%100 == 0:
-                print(f"{i}: {np.mean(trn_ndcg[-100:])}, loss: {np.mean(losses[-100:])}      ", end="\r")
+                print(f"{i}: {np.mean(trn_ndcg[-100:])}, loss: {np.mean(losses[-100:])}      ", end="\n")
 
-            batch_loss.backward()
+
+
+            # print("crit.size()", crit.size())
+            # print("out.size()", out.size())
+            out.squeeze().backward(crit)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 10)
             optimizer.step()
+
+            # inddddd.extend([i for _ in range(len(out))])
+            # scores_scores_scores.extend(out.tolist())
+            # plt.scatter(inddddd[-10000:], scores_scores_scores[-10000:], c='b', alpha=0.1)
+            # plt.scatter([i for _ in range(len(out))], out.tolist(), c='orange', alpha=0.1)
+            # plt.title(f"loss = {batch_loss}")
+            # plt.show()
 
 
 ##############################################

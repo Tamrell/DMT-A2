@@ -81,8 +81,17 @@ class DeltaNDCG:
         # return (torch.mul(relevances_tensor, rank_denominator_tensor) - torch.mul(relevances_tensor, rank_denominator_tensor.T))/iDCG
 
         # return ((original + original.T) - (after_swap + after_swap.T))/iDCG, denominator
+        dNDCG = torch.mul(direct_delta_denominator, direct_delta_nominator)/iDCG
+        if torch.sum(torch.isnan(dNDCG)):
+            print("dNDCG has nans")
+            print("iDCG", iDCG)
+            print("direct_delta_denominator")
+            print(direct_delta_denominator)
+            print("direct_delta_nominator")
+            print(direct_delta_nominator)
+            exit()
 
-        return torch.mul(direct_delta_denominator, direct_delta_nominator)/iDCG, denominator
+        return dNDCG, denominator
 
 
     def dNDCG_numpy(self, scores, relevances_array, iDCG):
@@ -92,7 +101,7 @@ class DeltaNDCG:
 
         num_items = relevances.shape[0]
         rank_values = numpy_rank_1d(scores).float()
-        denominator = 1/np.log(rank_values + 1)
+        denominator = 1/np.log2(rank_values + 1)
         rank_denominator_tensor = np.stack([denominator for _ in range(num_items)])
 
         return (np.multiply(relevances_array, rank_denominator_tensor) - np.multiply(relevances_array, rank_denominator_tensor.T))/iDCG
@@ -101,7 +110,25 @@ class DeltaNDCG:
     def ranknet_cost_torch(self, scores, precompute_S_arr, sigma):
         score_unsqueezed = scores
         score_diff = score_unsqueezed - score_unsqueezed.T
-        return precompute_S_arr * score_diff + torch.log(1 + torch.exp(-sigma * score_diff))
+
+        score_dif_norm = torch.norm(score_diff)
+
+        log_exp_part = torch.log(1 + torch.exp(-sigma * (score_diff/score_dif_norm)))
+        RNCost = precompute_S_arr * score_diff/score_dif_norm + log_exp_part
+
+
+        if torch.sum(torch.isnan(RNCost)):
+            print("RNCost has nans")
+            print("precompute_S_arr")
+            print(precompute_S_arr)
+            print("score_diff")
+            print(score_diff)
+            print("log_exp_part")
+            print(log_exp_part)
+            print("scores", scores)
+            exit()
+
+        return RNCost
 
 
     def ranknet_cost_numpy(self, scores, precompute_S_arr, sigma):
@@ -118,7 +145,17 @@ def s_array(vals, sigma):
     return 0.5*sigma - np.array([[s_value(v1, v2) for v2 in vals] for v1 in vals])*(0.5*sigma)
 
 def s_tensor(vals, sigma):
-    return 0.5*sigma - (vals-vals.T).sign()*(0.5*sigma)
+    precompute_S_arr = 0.5*sigma - (vals-vals.T).sign()*(0.5*sigma)
+    if torch.sum(torch.isnan(precompute_S_arr)):
+        print("s_tensor has nans")
+        print("precompute_S_arr")
+        print(precompute_S_arr)
+        print("(vals-vals.T)")
+        print(vals-vals.T)
+        print("(vals-vals.T).sign()")
+        print((vals-vals.T).sign())
+        exit()
+    return precompute_S_arr
     # return 0.5*sigma - torch.FloatTensor([[s_value(v1, v2) for v2 in vals] for v1 in vals])*(0.5*sigma)
 
 
