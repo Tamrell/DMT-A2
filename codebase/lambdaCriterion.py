@@ -1,9 +1,5 @@
-
-
-
 import numpy as np
 import torch
-
 
 class DeltaNDCG:
     def __init__(self, module):
@@ -21,11 +17,11 @@ class DeltaNDCG:
         # print("relevances_tensor", relevances_tensor)
         # print("iDCG", iDCG)
         rnet_cost = self.ranknet_cost_torch(scores, precompute_S_arr, sigma)
-        dndcg = self.dNDCG_torch(scores, relevances_tensor, iDCG)
+        dndcg, denominator = self.dNDCG_torch(scores, relevances_tensor, iDCG)
         # print("rnet_cost", rnet_cost)
         # print("dndcg", dndcg) # not finished
         # input()
-        return  torch.mul(rnet_cost, dndcg).sum(dim=1)
+        return  torch.mul(rnet_cost, dndcg).sum(dim=1), denominator
 
 
     def compute_loss_numpy(self, scores, relevances, iDCG, sigma):
@@ -60,13 +56,21 @@ class DeltaNDCG:
         rank_values = torch_rank_1d(scores).float()
         denominator = 1./torch.log2(rank_values + 1)
         rank_denominator_tensor = torch.stack([denominator for _ in range(num_items)])
+
+        original = torch.mul(relevances_tensor, rank_denominator_tensor)
+        after_swap = torch.mul(relevances_tensor, rank_denominator_tensor.T)
         # print("rank_denominator_tensor", rank_denominator_tensor)
         # print("rank_denominator_tensor.size()", rank_denominator_tensor.size())
         # print("rank_values", rank_values)
-        return (torch.mul(relevances_tensor, rank_denominator_tensor) - torch.mul(relevances_tensor, rank_denominator_tensor.T))/iDCG
+        # return (torch.mul(relevances_tensor, rank_denominator_tensor) - torch.mul(relevances_tensor, rank_denominator_tensor.T))/iDCG
+        return (original + original.T) - (after_swap + after_swap.T), denominator
 
 
     def dNDCG_numpy(self, scores, relevances_array, iDCG):
+        """ IMPLEMENTATION CHANGED RE-IMPLEMENT BASED ON TORCH VERSION ABOVE @R
+
+        """
+
         num_items = relevances.shape[0]
         rank_values = numpy_rank_1d(scores).float()
         denominator = 1/np.log(rank_values + 1)
@@ -97,19 +101,6 @@ def s_array(vals, sigma):
 def s_tensor(vals, sigma):
     return 0.5*sigma - (vals-vals.T).sign()*(0.5*sigma)
     # return 0.5*sigma - torch.FloatTensor([[s_value(v1, v2) for v2 in vals] for v1 in vals])*(0.5*sigma)
-
-def s_value(v1, v2):
-    """calculates S value:
-        - v1 > v2: S = 1
-        - v1 < v2: S = -1
-        - v1 = v2: S = 0
-    """
-    if v1 > v2:
-        return 1
-    elif v2 > v1:
-        return -1
-    else:
-        return 0
 
 
 def torch_rank_1d(values):

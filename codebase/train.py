@@ -4,6 +4,7 @@ from codebase.data_handling import BookingDataset
 from codebase.nn_models import ExodiaNet
 from codebase import lambdaCriterion
 from codebase import evaluation
+import matplotlib.pyplot as plt
 import time
 from codebase import io
 
@@ -14,8 +15,8 @@ def train(model, dataset, epochs, learning_rate, device):
             - config (?): contains information on hyperparameter settings and such.
             - dataset (Dataset object): dataset with which to train the model.
     """
-    TEST_SIGMA = 1
-    print("TESTING WITH SIGMA=1")
+    TEST_SIGMA = 0.1
+    print(f"TESTING WITH SIGMA={TEST_SIGMA}")
 
     # Setup the loss and optimizer
     model.to(device)
@@ -38,6 +39,7 @@ def train(model, dataset, epochs, learning_rate, device):
             i += 1
             X = X.to(device)
             Y = Y.to(device)
+            optimizer.zero_grad()
 
             out = model(X)
 
@@ -52,16 +54,16 @@ def train(model, dataset, epochs, learning_rate, device):
 
             # input(crit)
             batch_loss = crit.sum() ########srch_id level might be interesting for performance analysis (what kind of srches are easy to predict etc.)
-            if i > 100:
+            if i > 99 and i%100 == 0:
                 print(f"{i}: {np.mean(trn_ndcg[-100:])}", end="\r")
-            optimizer.zero_grad()
             batch_loss.backward()
             optimizer.step()
 
 ##############################################
-        print("Exodia has gotten even stronger! (hopefully)")
-
-        val_ndcg
+        # print("Exodia has gotten even stronger! (hopefully)")
+        # plt.plot(trn_ndcg)
+        # plt.show()
+        val_ndcg = list()
         with torch.no_grad():
             kek=0
             for search_id_V, X_V, Y_V, rand_bool_V in dataset.validation_batch_iter():
