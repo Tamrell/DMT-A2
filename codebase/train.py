@@ -9,7 +9,7 @@ import time
 from codebase import io
 
 
-def train(model, dataset, hyperparameters):
+def train(model, dataset, hyperparameters, dynamic_hist=False):
     """Trains the model on the given dataset
         Args:
             - config (?): contains information on hyperparameter settings and such.
@@ -25,7 +25,7 @@ def train(model, dataset, hyperparameters):
     # criterion = torch.nn.MSELoss() ################################# WANTED TO CHECK :(
     optimizer = torch.optim.Adam(model.parameters(), lr=hyperparameters['learning_rate'])
     gt = evaluation.load_ground_truth() ########### HACKS
-    # d_hist = DynamicHistogram()
+    d_hist = DynamicHistogram(dynamic_hist)
 
     for epoch in range(hyperparameters['epochs']):
 
@@ -69,8 +69,6 @@ def train(model, dataset, hyperparameters):
 ##############################################
         # print("Exodia has gotten even stronger! (hopefully)")
 
-        # d_hist.update(trn_ndcg)
-
         val_ndcg = list()
         with torch.no_grad():
             kek=0
@@ -96,6 +94,8 @@ def train(model, dataset, hyperparameters):
         model_id = io.add_model(hyperparameters)
         io.save_val_predictions(model_id, pred_string)
         io.save_model(model_id, model)
+        d_hist.update(model_id, trn_ndcg)
+
         print(f"Train NDCG: {np.mean(trn_ndcg):5f}, Validation NDCG: {np.mean(val_ndcg):5f}, t loss: {np.mean(losses):5f}, model_id: {model_id}, (Epoch time: {time.time()-t:5f})")
 
 
