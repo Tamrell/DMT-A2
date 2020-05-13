@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 from codebase.data_handling import preprocessing
-from codebase.evaluation import ndcg
+from codebase.evaluation import ndcg, make_test_predictions
 from codebase import io
 import os
 import torch
@@ -10,9 +10,9 @@ from codebase import train
 
 HYPERPARAMETERS = {
     "epochs" : 500,
-    "learning_rate" : 1e-3,
+    "learning_rate" : 1e-4,
     "layers" : 3,
-    "layer_size" : 150,
+    "layer_size" : 50,
     "attention_layer_idx" : 1,  # -1 denotes no attention layer
     "resnet" : True,
 
@@ -37,6 +37,9 @@ def parse_arguments():
     parser.add_argument("--preprocess", action="store_true")
 
     parser.add_argument("--ndcg", help="Calculate ndcg of validation predictions by model <input>")
+
+    parser.add_argument("--predict_test", help="Make test predictions with model <input>")
+
 
     return parser.parse_args()
 
@@ -67,6 +70,11 @@ def main(ARGS):
     elif ARGS.ndcg:
         val_ndcg = ndcg(io.load_val_predictions(ARGS.ndcg))
         print(f"Validation ndcg of model {ARGS.ndcg}: {val_ndcg}")
+
+    elif ARGS.predict_test:
+        model = io.load_model(ARGS.predict_test).to("cpu")
+        make_test_predictions(model, ARGS.predict_test)
+
 
     elif ARGS.train:
         for key in HYPERPARAMETERS:
