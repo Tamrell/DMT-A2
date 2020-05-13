@@ -7,10 +7,11 @@ import pickle
 # An exhaustive list of directories where result documents are saved.
 MODEL_DIR = os.path.join("results", "models")
 LOG_DIR = os.path.join("results", "logs")
-PREDICTIONS_DIR = os.path.join("results", "predictions")
+VALIDATION_DIR = os.path.join("results", "validation_predictions")
+TEST_DIR = os.path.join("results", "test_predictions")
 
 # Make sure to add any new directories you make to this loop.
-for directory in (MODEL_DIR, LOG_DIR, PREDICTIONS_DIR):
+for directory in (MODEL_DIR, LOG_DIR, VALIDATION_DIR, TEST_DIR):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
@@ -73,6 +74,15 @@ def save_model(model_id, model):
 def load_model(model_id):
     with open(os.path.join(MODEL_DIR, f"{model_id}.pkl")) as load_f:
         return pickle.load(load_f)
+
+
+def save_val_predictions(model_id, pred_str):
+    with open(os.path.join(VALIDATION_DIR, f"{model_id}.csv"), 'w') as save_f:
+        save_f.write(pred_str)
+
+def save_test_predictions(model_id, pred_str):
+    with open(os.path.join(TEST_DIR, f"{model_id}.csv"), 'w') as save_f:
+        save_f.write(pred_str)
 
 
 TRACKING_DF = get_tracking_df()
