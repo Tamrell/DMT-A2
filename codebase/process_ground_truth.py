@@ -8,6 +8,8 @@ from progressbar import progressbar
 def save_ground_truth(df, filename="ground truth.p", at=5):
     """Saves the ground truth dictionary for a given dataframe containing labels."""
 
+
+
     ground_truth = {}
     total = len(df["srch_id"].unique())
     largest = 50  # TODO; make less hotfixy for the largest length of the search query.
@@ -40,6 +42,7 @@ def save_ground_truth(df, filename="ground truth.p", at=5):
         vals.sort(reverse=True)
         ground_truth[s]["iDCG@5"] = sum(vals[i] * logs[i] for i in range(at))
         ground_truth[s]["iDCG@end"] = sum(val * logs[i] for i, val in enumerate(vals))
+
     pk.dump(ground_truth, open(filename, 'wb'))
     print(f"Done, ground truth saved as pickle dump in {filename}")
 
