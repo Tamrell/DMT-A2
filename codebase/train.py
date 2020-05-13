@@ -51,16 +51,15 @@ def train(model, dataset, epochs, learning_rate, device):
             with torch.no_grad():
                 losses.append(crit.sum().item())
 
-                NDCG(out, Y, gt[search_id]["iDCG@5"])
-
                 idx = torch.argsort(denominator.squeeze(), descending=True)[:5]
                 trn_ndcg.append(((denominator[idx] @ Y[idx])/gt[search_id]["iDCG@5"]).item())
+
 
             # input(crit)
             batch_loss = crit.sum() ########srch_id level might be interesting for performance analysis (what kind of srches are easy to predict etc.)
             if i > 99 and i%100 == 0:
                 print(f"{i}: {np.mean(trn_ndcg[-100:])}, loss: {np.mean(losses[-100:])}", end="\r")
-
+                 
             batch_loss.backward()
             optimizer.step()
 
@@ -85,16 +84,6 @@ def train(model, dataset, epochs, learning_rate, device):
                 idx = torch.argsort(denominator.squeeze(), descending=True)[:5]
                 val_ndcg.append(((denominator[idx] @ Y_V[idx])/gt[search_id]["iDCG@5"]).item())
         print(f"Train NDCG: {np.mean(trn_ndcg):5}, Validation NDCG: {np.mean(val_ndcg):5}, t loss: {np.mean(losses):5} (Epoch time: {time.time()-t})")
-
-
-##############################################
-LOGS = {i:np.log2(i+2) for i in range(50)}
-
-def NDCG(predictions, relevances, iDCG):
-    # print(predictions)
-    # print(relevances)
-    # input()
-##############################################
 
 
 def train_main(hyperparameters, fold_config):
