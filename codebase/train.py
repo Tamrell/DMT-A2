@@ -2,14 +2,14 @@ import numpy as np
 import torch
 from codebase.data_handling import BookingDataset
 from codebase.nn_models import ExodiaNet
-from codebase import lambdaCriterion
-from codebase import evaluation
+from codebase.dynamic_hist import DynamicHistogram
+from codebase import lambdaCriterion, evaluation
 import matplotlib.pyplot as plt
 import time
 from codebase import io
 
 
-def train(model, dataset, hyperparameters):
+def train(model, dataset, hyperparameters, dynamic_hist=False):
     """Trains the model on the given dataset
         Args:
             - config (?): contains information on hyperparameter settings and such.
@@ -26,6 +26,7 @@ def train(model, dataset, hyperparameters):
     # optimizer = torch.optim.Adam(model.parameters(), lr=hyperparameters['learning_rate'])
     optimizer = torch.optim.SGD(model.parameters(), lr=hyperparameters['learning_rate'], momentum=0.9)
     gt = evaluation.load_ground_truth() ########### HACKS
+    d_hist = DynamicHistogram(dynamic_hist)
 
     for epoch in range(hyperparameters['epochs']):
 
@@ -84,13 +85,10 @@ def train(model, dataset, hyperparameters):
 ##############################################
         # print("Exodia has gotten even stronger! (hopefully)")
 
-        # plt.hist(trn_ndcg, bins=np.arange(-0.01, 1.01, 0.01), alpha=0.4)
-        # plt.show()
-
         val_ndcg = list()
-        pred_string = "srch_id,prop_id\n"
         with torch.no_grad():
             kek=0
+            pred_string = "srch_id,prop_id\n"
             for search_id_V, X_V, Y_V, rand_bool_V, props_V in dataset.validation_batch_iter():
                 if not gt[search_id]["iDCG@end"]:
                     kek+=1
@@ -103,15 +101,17 @@ def train(model, dataset, hyperparameters):
 
                 ranking_prediction_val = prediction_to_property_ranking(out_val, props_V)
                 for prop in ranking_prediction_val:
-                    pred_string += f"{search_id}, {prop.item()}\n"
+                    pred_string += f"{search_id_V}, {prop.item()}\n"
 
                 crit, denominator = criterion.compute_loss_torch(out_val, Y_V, gt[search_id_V]["iDCG@end"], TEST_SIGMA, device)
                 idx = torch.argsort(denominator.squeeze(), descending=True)[:5]
-                val_ndcg.append(((denominator[idx] @ Y_V[idx])/gt[search_id]["iDCG@5"]).item())
-
+                val_ndcg.append(((denominator[idx] @ Y_V[idx])/gt[search_id_V]["iDCG@5"]).item())
 
         model_id = io.add_model(hyperparameters)
+        io.save_val_predictions(model_id, pred_string)
         io.save_model(model_id, model)
+        d_hist.update(model_id, trn_ndcg)
+
         print(f"Train NDCG: {np.mean(trn_ndcg):5f}, Validation NDCG: {np.mean(val_ndcg):5f}, t loss: {np.mean(losses):5f}, model_id: {model_id}, (Epoch time: {time.time()-t:5f})")
 
 

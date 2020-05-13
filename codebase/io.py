@@ -1,16 +1,21 @@
 import os
 import pandas as pd
+import numpy as np
 import torch
+from matplotlib import pyplot as plt
 
 import pickle
 
 # An exhaustive list of directories where result documents are saved.
 MODEL_DIR = os.path.join("results", "models")
 LOG_DIR = os.path.join("results", "logs")
-PREDICTIONS_DIR = os.path.join("results", "predictions")
+VALIDATION_DIR = os.path.join("results", "validation_predictions")
+TEST_DIR = os.path.join("results", "test_predictions")
+HISTOGRAM_DIR = os.path.join("results", "histograms")
 
 # Make sure to add any new directories you make to this loop.
-for directory in (MODEL_DIR, LOG_DIR, PREDICTIONS_DIR):
+for directory in (MODEL_DIR, LOG_DIR, VALIDATION_DIR, TEST_DIR,
+                  HISTOGRAM_DIR):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
@@ -69,10 +74,26 @@ def save_model(model_id, model):
     with open(os.path.join(MODEL_DIR, f"{model_id}.pkl"), 'wb') as save_f:
         pickle.dump(model, save_f)
 
-
 def load_model(model_id):
     with open(os.path.join(MODEL_DIR, f"{model_id}.pkl")) as load_f:
         return pickle.load(load_f)
+
+def save_val_predictions(model_id, pred_str):
+    with open(os.path.join(VALIDATION_DIR, f"{model_id}.csv"), 'w') as save_f:
+        save_f.write(pred_str)
+
+def load_val_predictions(model_id):
+    return pd.read_csv(os.path.join(VALIDATION_DIR, f"{model_id}.csv"))
+
+def save_test_predictions(model_id, pred_str):
+    with open(os.path.join(TEST_DIR, f"{model_id}.csv"), 'w') as save_f:
+        save_f.write(pred_str)
+
+def load_test_predictions(model_id):
+    return pd.read_csv(os.path.join(TEST_DIR, f"{model_id}.csv"))
+
+def save_histogram(model_id):
+    plt.savefig(os.path.join(HISTOGRAM_DIR, f"{model_id}.png"))
 
 
 TRACKING_DF = get_tracking_df()
