@@ -2,8 +2,8 @@ import numpy as np
 import torch
 from codebase.data_handling import BookingDataset
 from codebase.nn_models import ExodiaNet
-from codebase import lambdaCriterion
-from codebase import evaluation
+from codebase.dynamic_hist import DynamicHistogram
+from codebase import lambdaCriterion, evaluation
 import matplotlib.pyplot as plt
 import time
 from codebase import io
@@ -25,6 +25,7 @@ def train(model, dataset, hyperparameters):
     # criterion = torch.nn.MSELoss() ################################# WANTED TO CHECK :(
     optimizer = torch.optim.Adam(model.parameters(), lr=hyperparameters['learning_rate'])
     gt = evaluation.load_ground_truth() ########### HACKS
+    d_hist = DynamicHistogram()
 
     for epoch in range(hyperparameters['epochs']):
 
@@ -68,8 +69,7 @@ def train(model, dataset, hyperparameters):
 ##############################################
         # print("Exodia has gotten even stronger! (hopefully)")
 
-        plt.hist(trn_ndcg, bins=np.arange(-0.01, 1.01, 0.01))
-        plt.show()
+        d_hist.update(trn_ndcg)
 
         val_ndcg = list()
         with torch.no_grad():
