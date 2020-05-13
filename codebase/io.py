@@ -75,7 +75,7 @@ def save_model(model_id, model):
         pickle.dump(model, save_f)
 
 def load_model(model_id):
-    with open(os.path.join(MODEL_DIR, f"{model_id}.pkl")) as load_f:
+    with open(os.path.join(MODEL_DIR, f"{model_id}.pkl"), 'rb') as load_f:
         return pickle.load(load_f)
 
 def save_val_predictions(model_id, pred_str):
@@ -107,4 +107,3 @@ if __name__ == "__main__":
     # Note that you can have a model id as soon as you know the hyperparameters.
     model = "Very good predictions, also very impressed.csv"
     save_model(model_id, model)
-

@@ -17,7 +17,7 @@ class BookingDataset():
         not_for_train = ["srch_id", "relevance", "random_bool", "prop_id"]
 
         path = os.path.join("data", "train_segments", "train_segment_") ###################### I/O
-
+        self.fold=fold
         if fold == "dummy":
             print("\n\n!!! TRAINING ON THE DUMMY FOLD !!!\n\n")
             train_segments = [0]
@@ -25,6 +25,10 @@ class BookingDataset():
         elif fold == "full":
             print("\n\n!!! TRAINING ON THE FULL DATA!!!\n\n")
             train_segments = list(range(0, 10))
+            val_segment = None
+        elif fold == "test":
+            print("\n\n!!! LOADED IN TEST DATA!!!\n\n")
+            train_segments = None
             val_segment = None
         else:
             options = set(range(1, 11))
@@ -35,20 +39,27 @@ class BookingDataset():
 
         print(f"Fold: {fold}\nTrain segments: {train_segments}\nValidation segment: {val_segment}")
         print("Shuffling the deck...")#"\nPreparing Dataset...")
-        val_df = pd.read_csv(f"{path}{val_segment}.csv")           ###################### I/O
-        train_df =  pd.read_csv(f"{path}{train_segments[0]}.csv")  ###################### I/O
+        if fold == "test":
+            test_df = pd.read_csv(os.path.join("data", "test_preprocessed.csv"))
+            test_df = shift_rescale_columns(test_df, not_for_train)
+            self.search_no = len(test_df["srch_id"].unique())
+            self.feature_no = test_df.shape[1] - len(not_for_train) + 1
 
-        #################### TEST the shift-rescale ################
-        val_df = shift_rescale_columns(val_df, not_for_train)
-        train_df = shift_rescale_columns(train_df, not_for_train)
-        #########################################
+        else:
+            val_df = pd.read_csv(f"{path}{val_segment}.csv")           ###################### I/O
+            train_df =  pd.read_csv(f"{path}{train_segments[0]}.csv")  ###################### I/O
+
+            #################### TEST the shift-rescale ################
+            val_df = shift_rescale_columns(val_df, not_for_train)
+            train_df = shift_rescale_columns(train_df, not_for_train)
+            #########################################
 
 
-        for segment in train_segments[1:]:
-            train_df = train_df.append(pd.read_csv(f"{path}{segment}.csv")) ################ I/O
+            for segment in train_segments[1:]:
+                train_df = train_df.append(pd.read_csv(f"{path}{segment}.csv")) ################ I/O
 
-        self.search_no = len(train_df["srch_id"].unique())
-        self.feature_no = train_df.shape[1] - len(not_for_train)
+            self.search_no = len(train_df["srch_id"].unique())
+            self.feature_no = train_df.shape[1] - len(not_for_train)
         self.batches = {}
         self.props = {}
         self.relevances = {}
@@ -58,20 +69,27 @@ class BookingDataset():
         self.val_rand_bools = {}
         self.val_props = {}
 
-        # Precompute batches
-        for s, sub_df in train_df.groupby("srch_id"):
-            self.batches[s] = torch.from_numpy(sub_df.drop(columns=not_for_train).values).float()
-            self.relevances[s] = torch.from_numpy(sub_df[["relevance"]].values).float()
-            self.rand_bools[s] = sub_df["random_bool"].tolist()[0]
-            self.props[s] = torch.from_numpy(sub_df[["prop_id"]].values)
+        if fold == "test":
+            # Precompute batches
+            for s, sub_df in test_df.groupby("srch_id"):
+                self.batches[s] = torch.from_numpy(sub_df.drop(columns=[t for t in not_for_train if t != "relevance" ]).values).float()
+                self.rand_bools[s] = sub_df["random_bool"].tolist()[0]
+                self.props[s] = torch.from_numpy(sub_df[["prop_id"]].values)
+        else:
+            # Precompute batches
+            for s, sub_df in train_df.groupby("srch_id"):
+                self.batches[s] = torch.from_numpy(sub_df.drop(columns=not_for_train).values).float()
+                self.relevances[s] = torch.from_numpy(sub_df[["relevance"]].values).float()
+                self.rand_bools[s] = sub_df["random_bool"].tolist()[0]
+                self.props[s] = torch.from_numpy(sub_df[["prop_id"]].values)
 
-        for s, sub_df in val_df.groupby("srch_id"):
-            self.val_batches[s] = torch.from_numpy(sub_df.drop(columns=not_for_train).values).float()
-            self.val_relevances[s] = torch.from_numpy(sub_df[["relevance"]].values).float()
-            self.val_rand_bools[s] = sub_df["random_bool"].tolist()[0]
-            self.val_props[s] = torch.from_numpy(sub_df[["prop_id"]].values)
+            for s, sub_df in val_df.groupby("srch_id"):
+                self.val_batches[s] = torch.from_numpy(sub_df.drop(columns=not_for_train).values).float()
+                self.val_relevances[s] = torch.from_numpy(sub_df[["relevance"]].values).float()
+                self.val_rand_bools[s] = sub_df["random_bool"].tolist()[0]
+                self.val_props[s] = torch.from_numpy(sub_df[["prop_id"]].values)
 
-        self.val_len = len(self.val_batches)
+            self.val_len = len(self.val_batches)
 
     def get_val(self, key):
         return key, self.val_batches[key], self.val_relevances[key], self.val_rand_bools[key], self.val_props[key]
@@ -81,6 +99,9 @@ class BookingDataset():
             yield self.get_val(i)
 
     def __getitem__(self, key):
+        if self.fold == "test":
+            return key, self.batches[key], self.rand_bools[key], self.props[key]
+
         # label, I mean we have the key and probably the ground truth... do we want this inside this module or outside?
         return key, self.batches[key], self.relevances[key], self.rand_bools[key], self.props[key]
 
@@ -140,31 +161,31 @@ def preprocessing(train_path="", test_path=""):
     train_df = load_train()
 
     # Add relevance column # NOT TO USE AS FEATURE!!!!!
-    train_df["relevance"] = train_df["click_bool"] + 4 * train_df["booking_bool"]
+    # train_df["relevance"] = train_df["click_bool"] + 4 * train_df["booking_bool"]
 
     prior_dict = get_prior_dict(train_df) # ONLY USE WHEN YOU NEED STRONGER PREDICTIONS IN THE ENDGAME #RELEASEtheBEAST
 
-    # Drop columns
-    train_df = train_df.drop(to_drop + to_drop_exclusive, axis=1)
-
-    # Special fill distances
-    train_df = fill_distances(train_df)
-
-    train_df = add_engineered_features(train_df, prior_dict)
-
-    # Conversion to occurrence
-    for c in to_convert_on_occurrence:
-        train_df = occurrence_based_conversion(train_df, c)
-
-    # Skip to_decide
-    train_df = train_df.drop(to_decide, axis=1)
-
-    # Fill NaNs
-    train_df["prop_review_score"] = train_df["prop_review_score"].fillna(0)
-    train_df["prop_location_score2"] = train_df["prop_location_score2"].fillna(train_df["prop_location_score2"].median())
-
-    # Finish up by saving the train data
-    train_df = k_fold_segmentation(train_df)
+    # # Drop columns
+    # train_df = train_df.drop(to_drop + to_drop_exclusive, axis=1)
+    #
+    # # Special fill distances
+    # train_df = fill_distances(train_df)
+    #
+    # train_df = add_engineered_features(train_df, prior_dict)
+    #
+    # # Conversion to occurrence
+    # for c in to_convert_on_occurrence:
+    #     train_df = occurrence_based_conversion(train_df, c)
+    #
+    # # Skip to_decide
+    # train_df = train_df.drop(to_decide, axis=1)
+    #
+    # # Fill NaNs
+    # train_df["prop_review_score"] = train_df["prop_review_score"].fillna(0)
+    # train_df["prop_location_score2"] = train_df["prop_location_score2"].fillna(train_df["prop_location_score2"].median())
+    #
+    # # Finish up by saving the train data
+    # train_df = k_fold_segmentation(train_df)
     print(f"Done in {time.time()-t} seconds")
 
     ###========= Test Preprocessing =========###
@@ -195,7 +216,7 @@ def preprocessing(train_path="", test_path=""):
 
     print(f"Done in {time.time()-t} seconds")
 
-    train_df.to_csv(os.path.join("data", "train_preprocessed.csv"))
+    # train_df.to_csv(os.path.join("data", "train_preprocessed.csv"))
     test_df.to_csv(os.path.join("data", "test_preprocessed.csv"))
 
     return train_df, test_df
