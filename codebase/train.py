@@ -96,6 +96,7 @@ def train(model, dataset, hyperparameters):
 
         model_id = io.add_model(hyperparameters)
         io.save_model(model_id, model)
+        io.save_histogram(model_id, val_ndcg)
         print(f"Train NDCG: {np.mean(trn_ndcg):5f}, Validation NDCG: {np.mean(val_ndcg):5f}, t loss: {np.mean(losses):5f}, model_id: {model_id}, (Epoch time: {time.time()-t:5f})")
 
 
