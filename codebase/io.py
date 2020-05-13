@@ -80,9 +80,15 @@ def save_val_predictions(model_id, pred_str):
     with open(os.path.join(VALIDATION_DIR, f"{model_id}.csv"), 'w') as save_f:
         save_f.write(pred_str)
 
+def load_val_predictions(model_id):
+    return pd.read_csv(os.path.join(VALIDATION_DIR, f"{model_id}.csv"))
+
 def save_test_predictions(model_id, pred_str):
     with open(os.path.join(TEST_DIR, f"{model_id}.csv"), 'w') as save_f:
         save_f.write(pred_str)
+
+def load_test_predictions(model_id):
+    return pd.read_csv(os.path.join(TEST_DIR, f"{model_id}.csv"))
 
 
 TRACKING_DF = get_tracking_df()
