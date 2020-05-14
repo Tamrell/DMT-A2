@@ -34,7 +34,7 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
 
     for i in range(hyperparameters['epochs']):
         t = time.time()
-        train_loop_plug(model, dataset, optimizers, TEST_SIGMA, device)
+        model = train_loop_plug(model, dataset, optimizers, TEST_SIGMA, device)
         val_ndcg = list()
         val_ndcg_at5 = list()
         with torch.no_grad():
