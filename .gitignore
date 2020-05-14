@@ -9,6 +9,13 @@ data/
 # Benchmark folder
 benchmark_results/
 
+#csv files
+*.csv
+
+#pkls
+
+*.pkl
+
 # C extensions
 *.so
 

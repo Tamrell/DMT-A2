@@ -4,10 +4,18 @@ import torch
 torch.set_printoptions(threshold=10000)
 
 
-def train_loop_plug(net, dataset, optimizer, sigma):
-    net.train()
-    net.zero_grad()
-    optimizer = torch.optim.Adam(net.parameters(), lr=1e-3)
+def train_loop_plug(net, dataset, optimizer, sigma, device):
+    net[0].train()
+    net[1].train()
+
+    net[0].zero_grad()
+    net[1].zero_grad()
+
+    # print("FORCE TESTING lr: 1e-3")
+
+    optimizers = []
+    optimizers.append(torch.optim.Adam(net[0].parameters(), lr=1e-3))
+    optimizers.append(torch.optim.Adam(net[1].parameters(), lr=1e-3))
 
     count = 0
     batch_size = 200
@@ -17,9 +25,12 @@ def train_loop_plug(net, dataset, optimizer, sigma):
         if torch.sum(Y) == 0:
             # negative session, cannot learn useful signal
             continue
+        X = X.to(device)
+        Y = Y.to(device)
+        props=props.to(device)
 
         with torch.no_grad():
-            maxDCG = torch.sum(Y.squeeze() / torch.log2(torch.argsort(torch.argsort(Y.squeeze(), descending=True)).float() + 2))
+            maxDCG = torch.sum(Y.squeeze() / torch.log2(torch.argsort(torch.argsort(Y.squeeze(), descending=True)).float() + 2)).to(device)
 
             N = 1.0 / maxDCG
             # print("N just when create", N)
@@ -28,7 +39,7 @@ def train_loop_plug(net, dataset, optimizer, sigma):
         # print("batch_counter", batch_counter, end="\r")
         batch_counter += 1
         # X_tensor = torch.tensor(X, dtype=precision, device=device)
-        y_pred = net(X)
+        y_pred = net[rand_bool](X)
         y_pred_batch.append(y_pred)
         # compute the rank order of each document
         rank_order = torch.argsort(torch.argsort(Y.squeeze(), descending=True)) + 1
@@ -40,13 +51,15 @@ def train_loop_plug(net, dataset, optimizer, sigma):
             rel_diff = Y_tensor - Y_tensor.t()
             pos_pairs = (rel_diff > 0).float()
             neg_pairs = (rel_diff < 0).float()
+            # Hier aanpassen voor @5?
+            
             Sij = pos_pairs - neg_pairs
             gain_diff = Y_tensor - Y_tensor.t()
 
             # print("gain_diff")
             # print(gain_diff)
 
-            rank_order_tensor = torch.tensor(rank_order, dtype=float).view(-1, 1)
+            rank_order_tensor = torch.tensor(rank_order, dtype=float).view(-1, 1).to(device)
             decay_diff = 1.0 / torch.log2(rank_order_tensor + 1.0) - 1.0 / torch.log2(rank_order_tensor.t() + 1.0)
             # print("decay_diff")
             # print(decay_diff)
@@ -97,9 +110,9 @@ def train_loop_plug(net, dataset, optimizer, sigma):
                 y_pred.backward(grad / batch_size)
 
             # print(net.hidden[0].weight)
-            torch.nn.utils.clip_grad_norm_(net.parameters(), 10)
-            optimizer.step()
-            net.zero_grad()
+            torch.nn.utils.clip_grad_norm_(net[rand_bool].parameters(), 10)
+            optimizer[rand_bool].step()
+            net[rand_bool].zero_grad()
             grad_batch, y_pred_batch = [], []  # grad_batch, y_pred_batch used for gradient_acc
     return net
 

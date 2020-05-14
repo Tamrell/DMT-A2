@@ -10,10 +10,10 @@ from codebase import train2 as train
 
 
 HYPERPARAMETERS = {
-    "epochs" : 500,
-    "learning_rate" : 1e-3,
+    "epochs" : 10,
+    "learning_rate" : 1e-4,
     "layers" : 3,
-    "layer_size" : 50,
+    "layer_size" : 250,
     "attention_layer_idx" : 1,  # -1 denotes no attention layer
     "resnet" : True,
 
@@ -50,7 +50,7 @@ def set_device():
 
     # setting device on GPU if available, else CPU
     device =  torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    HYPERPARAMETERS['device'] = "cpu"#device
+    HYPERPARAMETERS['device'] = device
     print('Using device:', device)
     print()
 
@@ -73,7 +73,9 @@ def main(ARGS):
         print(f"Validation ndcg of model {ARGS.ndcg}: {val_ndcg}")
 
     elif ARGS.predict_test:
-        model = io.load_model(ARGS.predict_test).to("cpu")
+        model = io.load_model(ARGS.predict_test)
+        model[0] = model[0].to("cpu")
+        model[1] = model[1].to("cpu")
         make_test_predictions(model, ARGS.predict_test)
 
 

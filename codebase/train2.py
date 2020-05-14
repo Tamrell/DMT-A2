@@ -15,15 +15,18 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
             - config (?): contains information on hyperparameter settings and such.
             - dataset (Dataset object): dataset with which to train the model.
     """
-    TEST_SIGMA = 1e0 ##############################################
+    TEST_SIGMA = 1e1 ##############################################
     print(f"TESTING WITH SIGMA={TEST_SIGMA}")###################################3
 
     # Setup the loss and optimizer
     device = hyperparameters['device']
-    model.to(device)
+    model[0].to(device)
+    model[1].to(device)
     # criterion = lambdaCriterion.DeltaNDCG("pytorch")  # lage standaarden
     # criterion = torch.nn.MSELoss() ################################# WANTED TO CHECK :(
-    optimizer = torch.optim.Adam(model.parameters(), lr=hyperparameters['learning_rate'])
+    optimizers = []
+    optimizers.append(torch.optim.Adam(model[0].parameters(), lr=hyperparameters['learning_rate']))
+    optimizers.append(torch.optim.Adam(model[1].parameters(), lr=hyperparameters['learning_rate']))
     # optimizer = torch.optim.SGD(model.parameters(), lr=hyperparameters['learning_rate'], momentum=0.9)
     gt = evaluation.load_ground_truth() ########### HACKS
     # d_hist = DynamicHistogram(dynamic_hist)
@@ -31,7 +34,7 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
 
     for i in range(hyperparameters['epochs']):
         t = time.time()
-        model = train_loop_plug(model, dataset, optimizer, TEST_SIGMA)
+        train_loop_plug(model, dataset, optimizers, TEST_SIGMA, device)
         val_ndcg = list()
         val_ndcg_at5 = list()
         with torch.no_grad():
@@ -45,8 +48,7 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
                 X_V = X_V.to(device)
                 Y_V = Y_V.to(device)
 
-                out_val = model(X_V)
-
+                out_val = model[rand_bool_V](X_V)
                 ranking_prediction_val = prediction_to_property_ranking(out_val, props_V)
 
                 for prop in ranking_prediction_val.squeeze():
@@ -75,11 +77,10 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
                 # print("torch.log2(torch.argsort(torch.argsort(Y_V.squeeze(), descending=True)).float() + 1)")
                 # print(torch.log2(torch.argsort(torch.argsort(Y_V.squeeze(), descending=True)).float() + 2))
                 # input()
-                val_ndcg.append(torch.sum(val_dcg_pred_elements)/torch.sum(val_dcg_max_elements))
-                val_ndcg_at5.append(torch.sum(val_dcg_pred_elements[val_dcg_pred_at5_idx])/torch.sum(val_dcg_max_elements[val_dcg_max_at5_idx]))
+                val_ndcg.append((torch.sum(val_dcg_pred_elements)/torch.sum(val_dcg_max_elements)).item())
+                val_ndcg_at5.append((torch.sum(val_dcg_pred_elements[val_dcg_pred_at5_idx])/torch.sum(val_dcg_max_elements[val_dcg_max_at5_idx])).item())
                 # input(val_ndcg_at5[-1])
                 # val_ndcg.append(((denominator[idx] @ Y_V[idx])/gt[search_id_V]["iDCG@5"]).item())
-
         model_id = io.add_model(hyperparameters)
         io.save_val_predictions(model_id, pred_string)
         io.save_model(model_id, model)
@@ -98,12 +99,19 @@ def train_main(hyperparameters, fold_config):
         dataset = BookingDataset(fold_config)
         print("Done\nDrawing cards... WAIT! IS IT?!?")
         print("Summoning the forbidden one...")
-        model = ExodiaNet(dataset.feature_no,
+        model = []
+        model.append(ExodiaNet(dataset.feature_no,
                           hyperparameters['layer_size'],
                           hyperparameters['layers'],
                           hyperparameters['attention_layer_idx'],
                           hyperparameters['resnet'],
-                          hyperparameters['relu_slope'])
+                          hyperparameters['relu_slope']))
+        model.append(ExodiaNet(dataset.feature_no,
+                          hyperparameters['layer_size'],
+                          hyperparameters['layers'],
+                          hyperparameters['attention_layer_idx'],
+                          hyperparameters['resnet'],
+                          hyperparameters['relu_slope']))
 
         print("Done, It's time to d-d-d-ddd-d-d-d-dduel!")
         print("ExodiaNet enters the battlefield...")

@@ -20,8 +20,8 @@ class BookingDataset():
         self.fold=fold
         if fold == "dummy":
             print("\n\n!!! TRAINING ON THE DUMMY FOLD !!!\n\n")
-            train_segments = [0]
-            val_segment = 1
+            train_segments = [0, 1, 2, 4, 5, 6, 7, 8, 9]
+            val_segment = 3
         elif fold == "full":
             print("\n\n!!! TRAINING ON THE FULL DATA!!!\n\n")
             train_segments = list(range(0, 10))
@@ -47,6 +47,9 @@ class BookingDataset():
             self.feature_no = test_df.shape[1] - len(not_for_train) + 1
 
         else:
+            # val_df = pd.read_csv(f"{path}{val_segment}.csv", nrows=20000)           ###################### I/O
+            # train_df =  pd.read_csv(f"{path}{train_segments[0]}.csv", nrows=20000)  ###################### I/O
+
             val_df = pd.read_csv(f"{path}{val_segment}.csv")           ###################### I/O
             train_df =  pd.read_csv(f"{path}{train_segments[0]}.csv")  ###################### I/O
 
