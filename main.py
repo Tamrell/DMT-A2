@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 from codebase.data_handling import preprocessing
 from codebase.evaluation import ndcg, make_test_predictions
+from codebase.hyperparameter_search import generate_hyperparameters
 from codebase import io
 import os
 import torch
@@ -41,6 +42,8 @@ def parse_arguments():
 
     parser.add_argument("--predict_test", help="Make test predictions with model <input>")
 
+    parser.add_argument("--hyperparameter_search", action="store_true",
+                        help="If you don't get this there is no one to help you.")
 
     return parser.parse_args()
 
@@ -78,13 +81,17 @@ def main(ARGS):
         model[1] = model[1].to("cpu")
         make_test_predictions(model, ARGS.predict_test)
 
-
     elif ARGS.train:
         for key in HYPERPARAMETERS:
             value = eval(f"ARGS.{key}")
             assert value, f"missing value for {key}."
             HYPERPARAMETERS[key] = value
         train.train_main(HYPERPARAMETERS, "k_folds")
+
+    elif ARGS.hyperparameter_search:
+        for hyperparameters in generate_hyperparameters():
+            print(hyperparameters)
+            train.train_main(hyperparameters, "dummy")
 
     else:
         assert ARGS.dummy, "If not train, then the dummy flaggy should be used. You dumdum"

@@ -20,7 +20,7 @@ for directory in (MODEL_DIR, LOG_DIR, VALIDATION_DIR, TEST_DIR,
         os.makedirs(directory)
 
 # The csv where the dataframe that maps models to hyperparameters is saved.
-TRACKING_CSV = os.path.join("results", "io_tracking.csv")
+TRACKING_CSV = os.path.join("results", "io_tracking.wouw")
 TRACKING_DF = None
 
 
