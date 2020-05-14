@@ -11,7 +11,7 @@ from codebase import train2 as train
 
 HYPERPARAMETERS = {
     "epochs" : 500,
-    "learning_rate" : 1e-4,
+    "learning_rate" : 1e-3,
     "layers" : 3,
     "layer_size" : 50,
     "attention_layer_idx" : 1,  # -1 denotes no attention layer
@@ -50,7 +50,7 @@ def set_device():
 
     # setting device on GPU if available, else CPU
     device =  torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    HYPERPARAMETERS['device'] = device
+    HYPERPARAMETERS['device'] = "cpu"#device
     print('Using device:', device)
     print()
 

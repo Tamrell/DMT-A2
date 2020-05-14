@@ -23,8 +23,8 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
     model.to(device)
     # criterion = lambdaCriterion.DeltaNDCG("pytorch")  # lage standaarden
     # criterion = torch.nn.MSELoss() ################################# WANTED TO CHECK :(
-    # optimizer = torch.optim.Adam(model.parameters(), lr=hyperparameters['learning_rate'])
-    optimizer = torch.optim.SGD(model.parameters(), lr=hyperparameters['learning_rate'], momentum=0.9)
+    optimizer = torch.optim.Adam(model.parameters(), lr=hyperparameters['learning_rate'])
+    # optimizer = torch.optim.SGD(model.parameters(), lr=hyperparameters['learning_rate'], momentum=0.9)
     gt = evaluation.load_ground_truth() ########### HACKS
     # d_hist = DynamicHistogram(dynamic_hist)
 
@@ -48,8 +48,9 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
                 out_val = model(X_V)
 
                 ranking_prediction_val = prediction_to_property_ranking(out_val, props_V)
-                for prop in ranking_prediction_val:
-                    pred_string += f"{search_id_V}, {prop.item()}\n"
+
+                for prop in ranking_prediction_val.squeeze():
+                    pred_string += f"{search_id_V},{prop.item()}\n"
 
 
                 val_dcg_pred_at5_idx = torch.argsort(out_val.squeeze(), descending=True)[:5]
@@ -76,6 +77,7 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
                 # input()
                 val_ndcg.append(torch.sum(val_dcg_pred_elements)/torch.sum(val_dcg_max_elements))
                 val_ndcg_at5.append(torch.sum(val_dcg_pred_elements[val_dcg_pred_at5_idx])/torch.sum(val_dcg_max_elements[val_dcg_max_at5_idx]))
+                # input(val_ndcg_at5[-1])
                 # val_ndcg.append(((denominator[idx] @ Y_V[idx])/gt[search_id_V]["iDCG@5"]).item())
 
         model_id = io.add_model(hyperparameters)
@@ -86,7 +88,7 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
 
 
 def prediction_to_property_ranking(prediction, properties):
-    ranking = properties[torch.argsort(torch.argsort(prediction.squeeze(), descending=True))]
+    ranking = properties.squeeze()[torch.argsort(prediction.squeeze(), descending=True)]
     return ranking.squeeze()
 
 def train_main(hyperparameters, fold_config):

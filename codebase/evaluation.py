@@ -20,7 +20,7 @@ def ndcg(pred_df, at=5):
     """
     gt_dict = load_ground_truth()
     ndcg_list = []
-    logs = {i:1/np.log2(i+2) for i in range(at)}
+    logs = {i:1/np.log2(i+2) for i in range(50)}
 
     searches = len(pred_df["srch_id"].unique())
     grouped_pred = pred_df.groupby(by="srch_id")
@@ -38,7 +38,7 @@ def load_ground_truth(path=os.path.join("data", "ground truth.p")):
     return pk.load(open(path, "rb"))
 
 def prediction_to_property_ranking(prediction, properties):
-    ranking = properties[torch.argsort(torch.argsort(prediction.squeeze(), descending=True))]
+    ranking = properties.squeeze()[torch.argsort(prediction.squeeze(), descending=True)]
     return ranking.squeeze()
 
 def make_test_predictions(model, model_id):
@@ -49,5 +49,5 @@ def make_test_predictions(model, model_id):
             out = model(X)
             ranking = prediction_to_property_ranking(out, props)
             for prop in ranking:
-                pred_string += f"{search_id}, {prop.item()}\n"
+                pred_string += f"{search_id},{prop.item()}\n"
         io.save_test_predictions(model_id, pred_string)

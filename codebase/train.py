@@ -16,7 +16,7 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
             - config (?): contains information on hyperparameter settings and such.
             - dataset (Dataset object): dataset with which to train the model.
     """
-    TEST_SIGMA = 1e2 ##############################################
+    TEST_SIGMA = 1e0 ##############################################
     print(f"TESTING WITH SIGMA={TEST_SIGMA}")###################################3
 
     # Setup the loss and optimizer

@@ -41,6 +41,7 @@ class BookingDataset():
         print("Shuffling the deck...")#"\nPreparing Dataset...")
         if fold == "test":
             test_df = pd.read_csv(os.path.join("data", "test_preprocessed.csv"))
+            test_df = test_df.drop(columns=[test_df.columns[0]])
             test_df = shift_rescale_columns(test_df, not_for_train)
             self.search_no = len(test_df["srch_id"].unique())
             self.feature_no = test_df.shape[1] - len(not_for_train) + 1

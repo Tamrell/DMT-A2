@@ -7,7 +7,7 @@ torch.set_printoptions(threshold=10000)
 def train_loop_plug(net, dataset, optimizer, sigma):
     net.train()
     net.zero_grad()
-    optimizer = torch.optim.Adam(net.parameters(), lr=1e-3, momentum=0.9)
+    optimizer = torch.optim.Adam(net.parameters(), lr=1e-3)
 
     count = 0
     batch_size = 200
@@ -25,7 +25,7 @@ def train_loop_plug(net, dataset, optimizer, sigma):
             # print("N just when create", N)
             # print("maxDCG", maxDCG)
             # input()
-        print("batch_counter", batch_counter, end="\r")
+        # print("batch_counter", batch_counter, end="\r")
         batch_counter += 1
         # X_tensor = torch.tensor(X, dtype=precision, device=device)
         y_pred = net(X)
@@ -52,12 +52,12 @@ def train_loop_plug(net, dataset, optimizer, sigma):
             # print(decay_diff)
 
             # ALTERNATIVE
-            delta_ndcg = N * torch.abs((gain_diff * decay_diff) * (1 / pos_pairs_score_diff))
-            lambda_update = sigma  / pos_pairs_score_diff * delta_ndcg
+            # delta_ndcg = N * torch.abs((gain_diff * decay_diff) * (1 / pos_pairs_score_diff))
+            # lambda_update = sigma  / pos_pairs_score_diff * delta_ndcg
 
             # ORIGINAL FROM GITHUB PAGE
-            # delta_ndcg = torch.abs(N * gain_diff * decay_diff)
-            # lambda_update = sigma * (0.5 * (1 - Sij) - 1 / pos_pairs_score_diff) * delta_ndcg
+            delta_ndcg = torch.abs(N * gain_diff * decay_diff)
+            lambda_update = sigma * (0.5 * (1 - Sij) - 1 / pos_pairs_score_diff) * delta_ndcg
 
 
             # print("N")
@@ -94,7 +94,7 @@ def train_loop_plug(net, dataset, optimizer, sigma):
                 #     print(grad)
                 # print("gradient:")
                 # print(grad)
-                y_pred.backward(-grad / batch_size)
+                y_pred.backward(grad / batch_size)
 
             # print(net.hidden[0].weight)
             torch.nn.utils.clip_grad_norm_(net.parameters(), 10)
