@@ -6,8 +6,9 @@ from codebase import io
 import os
 import torch
 
-# from codebase import train ###################################################################### RE-INCLUDE: OLD TRAIN
-from codebase import train2 as train
+# from codebase import train ###################################################################### RE-INCLUDE: OLD TRAIN --> stored in testcode/r
+from codebase import train
+
 
 
 HYPERPARAMETERS = {
@@ -22,7 +23,6 @@ HYPERPARAMETERS = {
     "device" : None,
     "relu_slope" : 0.01
 }
-
 
 def parse_arguments():
     """Returns an variable which attributes are the arguments passed to call

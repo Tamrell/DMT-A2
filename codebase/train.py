@@ -1,10 +1,17 @@
+""" Handles training of models & contains LambdaRankCriterion class (bottom)
+
+I kept the squeeze operations 100% as they were, not fokkin with those things m8.
+"""
+
+
+
 import numpy as np
 import torch
 from codebase.data_handling import BookingDataset
 from codebase.nn_models import ExodiaNet
 from codebase.dynamic_hist import DynamicHistogram
-from codebase import lambdaCriterion, evaluation
-from codebase.evaluation import prediction_to_property_ranking
+from codebase import lambdaCriterion as LC
+from codebase import evaluation
 import matplotlib.pyplot as plt
 import time
 from codebase import io
@@ -16,106 +23,105 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
             - config (?): contains information on hyperparameter settings and such.
             - dataset (Dataset object): dataset with which to train the model.
     """
-    TEST_SIGMA = 1e0 ##############################################
+    EXP_VER = False ####################### bool, determines NDCG type False = like blogpost
+    TEST_SIGMA= 1e0 ##############################################
     print(f"TESTING WITH SIGMA={TEST_SIGMA}")###################################3
 
     # Setup the loss and optimizer
     device = hyperparameters['device']
-    model.to(device)
-    criterion = lambdaCriterion.DeltaNDCG("pytorch")  # lage standaarden
-    # criterion = torch.nn.MSELoss() ################################# WANTED TO CHECK :(
-    optimizer = torch.optim.Adam(model.parameters(), lr=hyperparameters['learning_rate'])
-    # optimizer = torch.optim.SGD(model.parameters(), lr=hyperparameters['learning_rate'], momentum=0.9)
+    model[0].to(device)
+    model[1].to(device)
+    LRCrit = LC.lambdaRankCriterion( EXP_VER, device, TEST_SIGMA)
+    optimizers = []
+    optimizers.append(torch.optim.Adam(model[0].parameters(), lr=hyperparameters['learning_rate']))
+    optimizers.append(torch.optim.Adam(model[1].parameters(), lr=hyperparameters['learning_rate']))
     gt = evaluation.load_ground_truth() ########### HACKS
-    # d_hist = DynamicHistogram(dynamic_hist)
+    d_hist = DynamicHistogram(dynamic_hist)
 
-    for epoch in range(hyperparameters['epochs']):
-
-        # to keep track of batches/second
+    # Iter epochs
+    for i in range(hyperparameters['epochs']):
         t = time.time()
 
-        i = 0
-        trn_ndcg = list()
-        losses = []
+        count = 0
+        batch_size = 1
 
-        scores_scores_scores = []
-        inddddd = []
+        # Prediciton & gradient accumulation
+        grad_batch, y_pred_batch = [], []
+        # NDCG values for plotting with dynamic hist
+        trn_ndcg = list()
+
+        # Train loop
         for search_id, X, Y, rand_bool, props in dataset:
-            if not gt[search_id]["iDCG@end"]:
+            if torch.sum(Y) == 0:
+                # no differences in this search_id
                 continue
-            i += 1
+
             X = X.to(device)
             Y = Y.to(device)
-            optimizer.zero_grad()
+            props=props.to(device)
 
-            out = model(X)
+            # Feed input to one of both models, dependent on rand_bool.
+            y_pred = model[rand_bool](X)
+            y_pred_batch.append(y_pred)
 
-
-####################### NEW ##################
-######## Do we want initialization loss?
-####### convergence criterium? ######
-            crit, denominator = criterion.compute_loss_torch(out, Y, gt[search_id]["iDCG@end"], TEST_SIGMA, device)
+            # Calculate gradients.
             with torch.no_grad():
-                losses.append(crit.sum().item())
 
-                idx = torch.argsort(denominator.squeeze(), descending=True)[:5]
-                trn_ndcg.append(((denominator[idx] @ Y[idx])/gt[search_id]["iDCG@5"]).item())
+                # NDCG_train currently unused, maybe we want toi report this as well?
+                grad, NDCG_train, NDCG_train_at5 = LRCrit.calculate_gradient_and_NDCG(y_pred, Y)
+                grad_batch.append(grad)
+                if dynamic_hist:
+                    dcg_pred_elements = NDCG_relevance_grade.squeeze() / torch.log2(torch.argsort(torch.argsort(out_val.squeeze(), descending=True)).float() + 2)
+                    idx = torch.argsort(out_val, descending=True)[:5]
+                    trn_ndcg.append(NDCG_train_at5)
 
+            # Apply gradients.
+            count += 1
+            if count % batch_size == 0:
+                for grad, y_pred in zip(grad_batch, y_pred_batch):
+                    y_pred.backward(grad / batch_size)
 
-            # input(crit)
-            batch_loss = crit.sum() ########srch_id level might be interesting for performance analysis (what kind of srches are easy to predict etc.)
-            if i > 99 and i%100 == 0:
-                print(f"{i}: {np.mean(trn_ndcg[-100:])}, loss: {np.mean(losses[-100:])}      ", end="\r")
+                # todo: check necessary
+                torch.nn.utils.clip_grad_norm_(model[rand_bool].parameters(), 10)
+                optimizers[rand_bool].step()
+                model[rand_bool].zero_grad()
 
-
-
-            # print("crit.size()", crit.size())
-            # print("out.size()", out.size())
-            out.squeeze().backward(crit)
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 10)
-            optimizer.step()
-
-            # inddddd.extend([i for _ in range(len(out))])
-            # scores_scores_scores.extend(out.tolist())
-            # plt.scatter(inddddd[-10000:], scores_scores_scores[-10000:], c='b', alpha=0.1)
-            # plt.scatter([i for _ in range(len(out))], out.tolist(), c='orange', alpha=0.1)
-            # plt.title(f"loss = {batch_loss}")
-            # plt.show()
+                # reset grad_batch, y_pred_batch used for gradient_acc
+                grad_batch, y_pred_batch = [], []
 
 
-##############################################
-        # print("Exodia has gotten even stronger! (hopefully)")
-
-        val_ndcg = list()
+        # Validation below
         with torch.no_grad():
-            kek=0
+            val_ndcgs = list()
+            val_ndcgs_at5 = list()
             pred_string = "srch_id,prop_id\n"
             for search_id_V, X_V, Y_V, rand_bool_V, props_V in dataset.validation_batch_iter():
                 if not gt[search_id_V]["iDCG@end"]:
-                    kek+=1
                     continue
 
                 X_V = X_V.to(device)
                 Y_V = Y_V.to(device)
-
-                out_val = model(X_V)
-
+                out_val = model[rand_bool_V](X_V)
                 ranking_prediction_val = prediction_to_property_ranking(out_val, props_V)
-                for prop in ranking_prediction_val:
-                    pred_string += f"{search_id_V}, {prop.item()}\n"
 
-                crit, denominator = criterion.compute_loss_torch(out_val, Y_V, gt[search_id_V]["iDCG@end"], TEST_SIGMA, device)
-                idx = torch.argsort(denominator.squeeze(), descending=True)[:5]
-                val_ndcg.append(((denominator[idx] @ Y_V[idx])/gt[search_id_V]["iDCG@5"]).item())
+                for prop in ranking_prediction_val.squeeze():
+                    pred_string += f"{search_id_V},{prop.item()}\n"
+
+                val_ndcg, val_ndcg_at5 = LRCrit.calc_NDCG_val(out_val, Y_V)
+                val_ndcgs.append(val_ndcg)
+                val_ndcgs_at5.append(val_ndcg_at5)
 
         model_id = io.add_model(hyperparameters)
         io.save_val_predictions(model_id, pred_string)
         io.save_model(model_id, model)
-        # d_hist.update(model_id, trn_ndcg)
+        print(f"Validation NDCG: {np.mean(val_ndcgs):5f}, Validation NDCG@5: {np.mean(val_ndcgs_at5):5f}, model_id: {model_id}, (Epoch time: {time.time()-t:5f})")
+        d_hist.update(model_id, trn_ndcg)
 
-        print(f"Train NDCG: {np.mean(trn_ndcg):5f}, Validation NDCG: {np.mean(val_ndcg):5f}, t loss: {np.mean(losses):5f}, model_id: {model_id}, (Epoch time: {time.time()-t:5f})")
 
 
+def prediction_to_property_ranking(prediction, properties):
+    ranking = properties.squeeze()[torch.argsort(prediction.squeeze(), descending=True)]
+    return ranking.squeeze()
 
 def train_main(hyperparameters, fold_config):
 
@@ -124,12 +130,19 @@ def train_main(hyperparameters, fold_config):
         dataset = BookingDataset(fold_config)
         print("Done\nDrawing cards... WAIT! IS IT?!?")
         print("Summoning the forbidden one...")
-        model = ExodiaNet(dataset.feature_no,
+        model = []
+        model.append(ExodiaNet(dataset.feature_no,
                           hyperparameters['layer_size'],
                           hyperparameters['layers'],
                           hyperparameters['attention_layer_idx'],
                           hyperparameters['resnet'],
-                          hyperparameters['relu_slope'])
+                          hyperparameters['relu_slope']))
+        model.append(ExodiaNet(dataset.feature_no,
+                          hyperparameters['layer_size'],
+                          hyperparameters['layers'],
+                          hyperparameters['attention_layer_idx'],
+                          hyperparameters['resnet'],
+                          hyperparameters['relu_slope']))
 
         print("Done, It's time to d-d-d-ddd-d-d-d-dduel!")
         print("ExodiaNet enters the battlefield...")
