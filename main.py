@@ -64,6 +64,8 @@ def set_device():
         print('Allocated:', round(torch.cuda.memory_allocated(0)/1024**3,1), 'GB')
         print('Cached:   ', round(torch.cuda.memory_cached(0)/1024**3,1), 'GB')
 
+    return device
+
 
 def main(ARGS):
     global HYPERPARAMETERS
@@ -89,7 +91,9 @@ def main(ARGS):
         train.train_main(HYPERPARAMETERS, "k_folds")
 
     elif ARGS.hyperparameter_search:
+        device = set_device()
         for hyperparameters in generate_hyperparameters():
+            hyperparameters['device'] = device
             print(hyperparameters)
             train.train_main(hyperparameters, "dummy")
 
