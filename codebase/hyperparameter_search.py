@@ -7,7 +7,12 @@ hyperparameters = {
     "layer_size" : 80,
     "attention_layer_idx" : 1,  # -1 denotes no attention layer
     "resnet" : True,
+    "lambda_batch_size": 150,
 
+    # Do not change these
+    "use_priors": True,
+    "artificial_relevance": False,
+    "exp_ver": False,
     "device" : None,
     "relu_slope" : 0.01
 }
@@ -44,8 +49,14 @@ def generate_hyperparameters():
         hp['resnet'] = resnet
         yield hp
 
-    RELU_SLOPE = [0.001, 0.1]
+    RELU_SLOPE = [0.001]
     for relu_slope in RELU_SLOPE:
         hp = copy(hyperparameters)
         hp['relu_slope'] = relu_slope
+        yield hp
+
+    BATCH_SIZES = [50, 450]
+    for b_size in BATCH_SIZES:
+        hp = copy(hyperparameters)
+        hp['lambda_batch_size'] = b_size
         yield hp

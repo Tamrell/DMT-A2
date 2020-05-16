@@ -11,19 +11,22 @@ from datetime import timedelta
 
 class BookingDataset():
 
-    def __init__(self, fold="dummy", artificial_relevance=False):
+    def __init__(self, fold="dummy", artificial_relevance=False, use_priors=True):
         """Class for holding a dataset.
             - Loads in segments to form a predefined fold (segment combination).
         """
         not_for_train = ["srch_id", "relevance", "artificial_relevance", "random_bool", "prop_id"]
-
-        # not_for_train += [f"prior_information_{p}" for p in ["clicks", "bookings", "position"]]
+        not_for_test = []
+        input(use_priors)
+        if not use_priors:
+            not_for_train += [f"prior_information_{p}" for p in ["clicks", "bookings", "position"]]
+            not_for_test += [f"prior_information_{p}" for p in ["clicks", "bookings", "position"]]
 
         path = os.path.join("data", "train_segments", "train_segment_") ###################### I/O
         self.fold=fold
         if fold == "dummy":
             print("\n\n!!! TRAINING ON THE DUMMY FOLD !!!\n\n")
-            train_segments = [0]#, 1, 2, 3, 4, 5, 6, 8, 9]
+            train_segments = [0, 1, 2, 3, 4, 5, 6, 8, 9]
             val_segment = 7
         elif fold == "full":
             print("\n\n!!! TRAINING ON THE FULL DATA!!!\n\n")
@@ -31,6 +34,7 @@ class BookingDataset():
             val_segment = None
         elif fold == "test":
             print("\n\n!!! LOADED IN TEST DATA!!!\n\n")
+            not_for_train.pop(2)
             train_segments = None
             val_segment = None
         else:
@@ -43,9 +47,13 @@ class BookingDataset():
         print(f"Fold: {fold}\nTrain segments: {train_segments}\nValidation segment: {val_segment}")
         print("Shuffling the deck...")#"\nPreparing Dataset...")
         if fold == "test":
-            test_df = pd.read_csv(os.path.join("data", "test_preprocessed.csv"))
-            test_df = test_df.drop(columns=[test_df.columns[0]])
+            test_df = pd.read_csv(os.path.join("data", "test_preprocessed.csv"), nrows=200)
+            print(test_df.shape)
+            test_df = test_df.drop(columns=[test_df.columns[0]] + not_for_test)
+            print(not_for_test)
             test_df = shift_rescale_columns(test_df, not_for_train)
+            print(test_df.shape)
+
             self.search_no = len(test_df["srch_id"].unique())
             self.feature_no = test_df.shape[1] - len(not_for_train) + 1
 
@@ -62,6 +70,7 @@ class BookingDataset():
             #################### TEST the shift-rescale ################
             val_df = shift_rescale_columns(val_df, not_for_train)
             train_df = shift_rescale_columns(train_df, not_for_train)
+            # train_df["artificial_relevance"] = train_df["artificial_relevance"].apply(lambda x: 0 if (0 > x) & (x > -2) else x/5)
             #########################################
 
 

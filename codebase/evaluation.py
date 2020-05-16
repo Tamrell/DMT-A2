@@ -41,8 +41,8 @@ def prediction_to_property_ranking(prediction, properties):
     ranking = properties.squeeze()[torch.argsort(prediction.squeeze(), descending=True)]
     return ranking.squeeze()
 
-def make_test_predictions(model, model_id):
-    test_data = BookingDataset("test")
+def make_test_predictions(model, model_id, hyperparameters):
+    test_data = BookingDataset("test", use_priors=hyperparameters["use_priors"])
     with torch.no_grad():
         pred_string = ["srch_id,prop_id"]
         for search_id, X, rand_bool, props in test_data:

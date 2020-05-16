@@ -14,13 +14,15 @@ from codebase import train
 HYPERPARAMETERS = {
     "epochs" : 100,
     "learning_rate" : 1e-4,
-    "layers" : 2 ,
-    "layer_size" : 50,
-    "attention_layer_idx" : -1,  # -1 denotes no attention layer
+    "layers" : 5,
+    "layer_size" : 250,
+    "attention_layer_idx" : 3,  # -1 denotes no attention layer
     "resnet" : True,
     "exp_ver": False,
-    "artificial_relevance": True,
-    "lambda_batch_size": 200,
+
+    "artificial_relevance": False,
+    "lambda_batch_size": 50,
+    "use_priors": False,
 
     # These hyperparameters are not in the commandline arguments.
     "device" : None,
@@ -76,7 +78,7 @@ def main(ARGS):
     if ARGS.preprocess:
         preprocessing()
 
-    elif ARGS.ndcg:
+    if ARGS.ndcg:
         val_ndcg = ndcg(io.load_val_predictions(ARGS.ndcg))
         print(f"Validation ndcg of model {ARGS.ndcg}: {val_ndcg}")
 
@@ -84,7 +86,7 @@ def main(ARGS):
         model = io.load_model(ARGS.predict_test)
         model[0] = model[0].to("cpu")
         model[1] = model[1].to("cpu")
-        make_test_predictions(model, ARGS.predict_test)
+        make_test_predictions(model, ARGS.predict_test, HYPERPARAMETERS)
 
     elif ARGS.train:
         for key in HYPERPARAMETERS:
