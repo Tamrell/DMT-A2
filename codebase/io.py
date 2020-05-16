@@ -4,6 +4,7 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 import pickle
+import json
 
 # An exhaustive list of directories where result documents are saved.
 MODEL_DIR = os.path.join("results", "models")
@@ -11,10 +12,11 @@ LOG_DIR = os.path.join("results", "logs")
 VALIDATION_DIR = os.path.join("results", "validation_predictions")
 TEST_DIR = os.path.join("results", "test_predictions")
 HISTOGRAM_DIR = os.path.join("results", "histograms")
+JSON_DIR = os.path.join("results", "jsons")
 
 # Make sure to add any new directories you make to this loop.
 for directory in (MODEL_DIR, LOG_DIR, VALIDATION_DIR, TEST_DIR,
-                  HISTOGRAM_DIR):
+                  HISTOGRAM_DIR, JSON_DIR):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
@@ -38,7 +40,7 @@ def get_tracking_df(init=''):
             print("The program cannot execute without a tracking csv")
             quit()
 
-    return pd.read_csv(TRACKING_CSV)
+    return pd.read_csv(TRACKING_CSV, index_col=0)
 
 
 def add_hyperparam(hyperparameter, default_value=None, save=True):
@@ -68,6 +70,13 @@ def get_model_ids(hyperparam_dict):
 
     return list(df.index)
 
+def save_json(model_id, dictionary):
+    with open(os.path.join(JSON_DIR, f"{model_id}.json"), 'w') as save_f:
+        save_f.write(json.dumps(dictionary))
+
+def load_json(model_id):
+    with open(os.path.join(JSON_DIR, f"{model_id}.json")) as load_f:
+        return json.loads(load_f.read())
 
 def save_model(model_id, model):
     with open(os.path.join(MODEL_DIR, f"{model_id}.pkl"), 'wb') as save_f:
