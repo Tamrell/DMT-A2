@@ -8,13 +8,13 @@ hyperparameters = {
     "attention_layer_idx" : 1,  # -1 denotes no attention layer
     "resnet" : True,
     "lambda_batch_size": 150,
+    "relu_slope" : 0.01,
 
     # Do not change these
     "use_priors": True,
     "artificial_relevance": False,
     "exp_ver": False,
-    "device" : None,
-    "relu_slope" : 0.01
+    "device" : None
 }
 
 
