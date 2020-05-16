@@ -27,7 +27,8 @@ class lambdaRankCriterion:
         -
     """
 
-    def __init__(self, exp_ver, device, sigma):
+    def __init__(self, exp_ver, device, sigma, at_5):
+        self.at_5 = at_5
         self.exp_ver = exp_ver
         self.device = device
         self.sigma = sigma
@@ -117,10 +118,11 @@ class lambdaRankCriterion:
 
         """
         dcg_pred_elements = relevance_factor.squeeze() / torch.log2(torch.argsort(torch.argsort(y_pred.squeeze(), descending=True)).float() + 2)
-        idx = torch.argsort(y_pred, descending=True)
+        idx = torch.argsort(y_pred.squeeze(), descending=True)
         idx_at5 = idx[:5]
+        idx_at5_max =  torch.argsort(relevance_factor.squeeze(), descending=True)
         NDCG_train = torch.sum(dcg_pred_elements)/torch.sum(maxDCG_elements)
-        NDCG_train_at5 = torch.sum(dcg_pred_elements[idx_at5])/torch.sum(maxDCG_elements[idx_at5])
+        NDCG_train_at5 = torch.sum(dcg_pred_elements[idx_at5])/torch.sum(maxDCG_elements[idx_at5_max])
 
         return NDCG_train.item(), NDCG_train_at5.item()
 
@@ -168,15 +170,21 @@ class lambdaRankCriterion:
             Description of returned object.
 
         """
+
         denominator_dcg_max_DCG_elements = 1 / torch.log2(rank_order_as_NDCG_denominator_tensor)
-        maxDCG_elements = relevance_factor.squeeze() * denominator_dcg_max_DCG_elements
+        maxDCG_elements = relevance_factor.squeeze() * denominator_dcg_max_DCG_elements.squeeze()
         maxDCG = torch.sum(maxDCG_elements).to(self.device)
 
         N = 1.0 / maxDCG
         gain_diff = self.calc_gain_diff(relevance_factor)
-        decay_diff = 1.0 * denominator_dcg_max_DCG_elements - 1.0 * denominator_dcg_max_DCG_elements.t()
+        decay_diff = denominator_dcg_max_DCG_elements - denominator_dcg_max_DCG_elements.t()
 
         delta_ndcg = torch.abs(N * gain_diff * decay_diff)
+        if self.at_5:
+            mask = rank_order_as_NDCG_denominator_tensor <= 7
+            mask = mask + mask.t()
+            mask = mask > 0
+            delta_ndcg = delta_ndcg * mask
         return delta_ndcg, maxDCG_elements
 
     def calc_ranknet_gradients(self, y_pred, Y):
@@ -195,6 +203,7 @@ class lambdaRankCriterion:
             ranknet cost gradient.
 
         """
+
         rel_diff = Y - Y.t()
         pos_pairs = (rel_diff > 0).float()
         neg_pairs = (rel_diff < 0).float()

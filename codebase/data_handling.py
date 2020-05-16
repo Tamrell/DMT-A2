@@ -11,21 +11,42 @@ from datetime import timedelta
 
 class BookingDataset():
 
-    def __init__(self, fold="dummy", artificial_relevance=False, uniform_relevance=False, use_priors=True):
+    def __init__(self, fold, hyperparameters):
         """Class for holding a dataset.
             - Loads in segments to form a predefined fold (segment combination).
         """
+        fold_dict = {0: [3, 4],
+                     1: [5, 6],
+                     2: [7, 8]}
+
+
+        artificial_relevance = hyperparameters["artificial_relevance"]
+        uniform_relevance = hyperparameters["uniform_relevance"]
+        use_priors = hyperparameters["use_priors"]
+
         not_for_train = ["srch_id", "relevance", "artificial_relevance", "random_bool", "prop_id"]
+        if not hyperparameters["split_on_random_bool"]:
+            not_for_train.pop(3)
         not_for_test = []
-        if not use_priors:
-            not_for_train += [f"prior_information_{p}" for p in ["clicks", "bookings", "position"]]
-            not_for_test += [f"prior_information_{p}" for p in ["clicks", "bookings", "position"]]
+
+        # FIX PRIOR PER FOLD/FULL  L E A K Y  B O I
+        to_remove = ["", "0_", "1_", "2_"]
+        if use_priors:
+            if isinstance(fold, int):
+                to_remove.pop(fold+1)
+                to_remove.pop(0)
+            else:
+                to_remove = ["0_", "1_", "2_"]
+        for prefix in to_remove:
+            not_for_train += [f"{prefix}prior_information_{p}" for p in ["clicks", "bookings", "position"]]
+            not_for_test += [f"{prefix}prior_information_{p}" for p in ["clicks", "bookings", "position"]]
+
 
         path = os.path.join("data", "train_segments", "train_segment_") ###################### I/O
         self.fold=fold
         if fold == "dummy":
             print("\n\n!!! TRAINING ON THE DUMMY FOLD !!!\n\n")
-            train_segments = [0, 1, 2, 3, 4, 5, 6, 8, 9]
+            train_segments = [0]
             val_segment = 7
         elif fold == "full":
             print("\n\n!!! TRAINING ON THE FULL DATA!!!\n\n")
@@ -34,8 +55,14 @@ class BookingDataset():
         elif fold == "test":
             print("\n\n!!! LOADED IN TEST DATA!!!\n\n")
             not_for_train.pop(2)
+            not_for_train.pop(1)
             train_segments = None
             val_segment = None
+
+        elif isinstance(fold, int):
+            train_segments = fold_dict[fold]
+            val_segment = fold
+
         else:
             options = set(range(1, 11))
             assert (fold in options), f"Received illegal fold '{fold}' as input"
@@ -48,14 +75,14 @@ class BookingDataset():
         if fold == "test":
             test_df = pd.read_csv(os.path.join("data", "test_preprocessed.csv"))
             test_df = test_df.drop(columns=[test_df.columns[0]] + not_for_test)
-            test_df = shift_rescale_columns(test_df, not_for_train)
+            test_df = shift_rescale_columns(test_df, not_for_train + ["random_bool"])
 
             self.search_no = len(test_df["srch_id"].unique())
             self.feature_no = test_df.shape[1] - len(not_for_train) + 1
 
         else:
-            # val_df = pd.read_csv(f"{path}{val_segment}.csv", nrows=20000)           ###################### I/O
-            # train_df =  pd.read_csv(f"{path}{train_segments[0]}.csv", nrows=20000)  ###################### I/O
+            # val_df = pd.read_csv(f"{path}{val_segment}.csv", nrows=2000)           ###################### I/O
+            # train_df =  pd.read_csv(f"{path}{train_segments[0]}.csv", nrows=2000)  ###################### I/O
 
             val_df = pd.read_csv(f"{path}{val_segment}.csv")           ###################### I/O
             train_df =  pd.read_csv(f"{path}{train_segments[0]}.csv")  ###################### I/O
@@ -64,8 +91,8 @@ class BookingDataset():
                 train_df = train_df.append(pd.read_csv(f"{path}{segment}.csv")) ################ I/O
 
             #################### TEST the shift-rescale ################
-            val_df = shift_rescale_columns(val_df, not_for_train)
-            train_df = shift_rescale_columns(train_df, not_for_train)
+            val_df = shift_rescale_columns(val_df, not_for_train+["random_bool"])
+            train_df = shift_rescale_columns(train_df, not_for_train+["random_bool"])
             if uniform_relevance:
                 train_df['relevance'] = train_df['relevance'].apply(lambda x: 1 if x > 0 else 0)
                 val_df['relevance'] = val_df['relevance'].apply(lambda x: 1 if x > 0 else 0)
@@ -114,7 +141,7 @@ class BookingDataset():
             self.val_len = len(self.val_batches)
 
     def get_val(self, key):
-        return key, self.val_batches[key], self.val_relevances[key], self.val_rand_bools[key], self.val_props[key]
+        return key, self.val_batches[key], self.val_relevances[key], int(self.val_rand_bools[key]), self.val_props[key]
 
     def validation_batch_iter(self):
         for i in self.val_batches.keys():
@@ -122,10 +149,18 @@ class BookingDataset():
 
     def __getitem__(self, key):
         if self.fold == "test":
-            return key, self.batches[key], self.rand_bools[key], self.props[key]
+            return key, self.batches[key], int(self.rand_bools[key]), self.props[key]
 
-        # label, I mean we have the key and probably the ground truth... do we want this inside this module or outside?
-        return key, self.batches[key], self.relevances[key], self.rand_bools[key], self.props[key]
+
+        Y =  self.relevances[key]
+        X =  self.batches[key]
+        P = self.props[key]
+
+        row_no = Y.size()[0]
+
+        random_idx = torch.randperm(row_no)
+
+        return key, X[random_idx,:], Y[random_idx,:], self.rand_bools[key], P[random_idx,:]
 
     def __iter__(self):
         for i in np.random.permutation(list(self.batches.keys())):
@@ -181,8 +216,6 @@ def preprocessing(train_path="", test_path=""):
               ,"prop_location_score2": "median"
               }
 
-    # to_rescale_and_shift = []
-
     print("Preprocessing training data... 0/4", end="\r")
 
     t = time.time()
@@ -199,10 +232,10 @@ def preprocessing(train_path="", test_path=""):
     train_df["artificial_relevance"] += train_df["relevance"]
 
     print("Preprocessing training data... 1/4", end="\r")
-    prior_dict = get_prior_dict(train_df) # ONLY USE WHEN YOU NEED STRONGER PREDICTIONS IN THE ENDGAME #RELEASEtheBEAST
+    prior_dict = get_prior_dict(train_df) # ONLY USE WHEN YOU NEED STRONGER PREDICTIONS IN THE ENDGAME #RELEASEtheForbiddenOne
 
     # Drop columns
-    train_df = train_df.drop(to_drop + to_drop_exclusive, axis=1)
+    train_df = train_df.drop(to_drop, axis=1)
 
     # Special fill distances
     train_df = fill_distances(train_df)
@@ -230,8 +263,9 @@ def preprocessing(train_path="", test_path=""):
     train_df["prop_location_score2"] = train_df["prop_location_score2"].fillna(train_df["prop_location_score2"].median())
 
     # Finish up by saving the train data
-    train_df = k_fold_segmentation(train_df)
+    train_df = k_fold_segmentation(train_df, to_drop_exclusive)
     print(f"Done in {time.time()-t} seconds")
+
     ###========= Test Preprocessing =========###
 
     print("Preprocessing test data...")
@@ -305,13 +339,22 @@ def add_sine_cosine(df):
     # convert to day of week
     df["weekday"] = dates.dt.weekday
 
-    df["hour"] = dates.dt.hour
-
-    # df["hour sin"] = pass
-    # df["hour cos"] = pass
-
+    # Implement
     arrival_diff = df["srch_booking_window"]
     end_diff = df["srch_length_of_stay"]
+
+    hours_sin = list()
+    hours_cos = list()
+
+    total_seconds_in_day = 60 * 60 * 24
+
+    for sec in dates.dt.hour*60*60+dates.dt.minute*60+dates.dt.second:
+        pos = 2 * np.pi / total_seconds_in_day * sec
+        hours_sin.append(np.sin(pos))
+        hours_cos.append(np.cos(pos))
+    df["time sin"] = hours_sin
+    df["time cos"] = hours_cos
+
 
     for day, arrival_day, end_day in zip(dates, arrival_diff, end_diff):
         total_days = 365
@@ -333,21 +376,29 @@ def add_sine_cosine(df):
         df[f"{d} day sin"] = inf_dict[d]["sine"]
         df[f"{d} day cos"] = inf_dict[d]["cosine"]
 
-    # df1 = pd.DataFrame((np.arctan2(df["arrival day sin"], df["arrival day cos"]) * 180 / np.pi).value_counts(bins=36))
-    # total_count_ = df1.sum()
-    # angles = [angle for angle in (np.arctan2(df["arrival day sin"], df["arrival day cos"]) * 180 / np.pi).tolist()]
-    # magnitudes = [0]*len(angles)
-    # for i, angle in enumerate(angles):
-    #     for ind, interval in enumerate(df1.index):
-    #         if angle in interval:
-    #             magnitudes[i] = df1.loc[ind]/total_count_
-    #
-    # df['window shopping level'] = magnitudes
 
+
+
+    # Code for binning
+    angles = np.arctan2(df["arrival day sin"], df["arrival day cos"]) * 180 / np.pi
+    binned_angles = angles.apply(bin_angle)
+    bin_count = binned_angles.value_counts()
+    binned_angles.map(bin_count.to_dict())
+    df["window_shopping_propensity"] = binned_angles.map(bin_count.to_dict())
 
     df[f"angle_booking_window"] = angle_booking_window
     df = df.drop(columns=["date_time"])
     return df
+
+def bin_angle(x, bin_count=52):
+    max_val = 180
+    min_val = -180
+    bin_size = 360/bin_count
+
+    for bin, check in enumerate(np.arange(-180, 180, bin_size)):
+        if x < check+bin_size:
+            return bin
+
 
 def get_prior_dict(train_df):
     """saves information based on the train data for the features as prior probabilities
@@ -383,18 +434,42 @@ def assign_prior_information(df, prior_dict):
         df[colname] = df[colname].fillna(df[colname].mean())
     return df
 
+def assign_prior_information_less_leakage(df, prior_dict, fold):
+
+    avgpos = np.nanmean(list(prior_dict["position"].items()))
+    for pos in prior_dict["position"]:
+        if prior_dict["position"][pos]:
+            pass
+        else:
+            prior_dict["position"][pos] = avgpos
+
+    for p in prior_dict:
+        colname = f"{fold}_prior_information_{p}"
+        df[colname] = df["prop_id"].map(prior_dict[p])
+        df[colname] = df[colname].fillna(df[colname].median())
+    return df
 
 
-def k_fold_segmentation(train_df, k=10, save_as_files=True):
+
+def k_fold_segmentation(train_df, to_drop_exclusive, k=9, save_as_files=True):
     # TODO; shuffle all search_ids and make even-length folds over them.
     folds = {s: np.random.randint(0, k) for s in train_df["srch_id"].unique()}
+    validation_folds = [0, 1, 2]
+
 
     folds_list = []
+
     for _, row in train_df.iterrows():
         folds_list.append(folds[row["srch_id"]])
     train_df["fold_segment"] = folds_list
     #     for f in folds:
     #         print(len(f))
+    for fold in validation_folds:
+        less_leakage = train_df[train_df["fold_segment"] != fold]
+        prior_dict = get_prior_dict(less_leakage)
+        train_df = assign_prior_information_less_leakage(train_df, prior_dict, fold)
+
+    train_df = train_df.drop(to_drop_exclusive, axis=1)
 
     if save_as_files:
 
@@ -543,10 +618,10 @@ def summarize_competitor_information(df):
 
 
 def load_train(path=os.path.join("data","training_set_VU_DM.csv")):
-    return pd.read_csv(path, nrows=200000)
+    return pd.read_csv(path)
 
 def load_test(path=os.path.join("data", "test_set_VU_DM.csv")):
-    return pd.read_csv(path, nrows=200000)
+    return pd.read_csv(path)
 
 
 if __name__ == '__main__':

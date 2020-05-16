@@ -8,7 +8,7 @@ I kept the squeeze operations 100% as they were, not fokkin with those things m8
 import numpy as np
 import torch
 from codebase.data_handling import BookingDataset
-from codebase.nn_models import ExodiaNet
+from codebase.nn_models import ModelWrapper
 from codebase.dynamic_hist import DynamicHistogram
 from codebase import lambdaCriterion as LC
 from codebase import evaluation
@@ -25,16 +25,13 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
     """
     EXP_VER = hyperparameters["exp_ver"] ####################### bool, determines NDCG type False = like blogpost
     TEST_SIGMA= 1e0 ##############################################
-    print(f"TESTING WITH SIGMA={TEST_SIGMA}")###################################3
+    # print(f"TESTING WITH SIGMA={TEST_SIGMA}")###################################3
 
     # Setup the loss and optimizer
     device = hyperparameters['device']
-    model[0].to(device)
-    model[1].to(device)
-    LRCrit = LC.lambdaRankCriterion(EXP_VER, device, TEST_SIGMA)
-    optimizers = []
-    optimizers.append(torch.optim.Adam(model[0].parameters(), lr=hyperparameters['learning_rate']))
-    optimizers.append(torch.optim.Adam(model[1].parameters(), lr=hyperparameters['learning_rate']))
+    crit_at5 = hyperparameters["ndcg@5"]
+
+    LRCrit = LC.lambdaRankCriterion(EXP_VER, device, TEST_SIGMA, crit_at5)
     gt = evaluation.load_ground_truth() ########### HACKS
     d_hist = DynamicHistogram(dynamic_hist)
 
@@ -47,7 +44,8 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
         ndcg_dict = dict()
 
         # Prediciton & gradient accumulation
-        grad_batch, y_pred_batch = [], []
+        grad_batch, y_pred_batch = [[], []], [[], []]
+        rand_counters = [0,0]
         # NDCG values for plotting with dynamic hist first is for rand bool off.
         trn_ndcg = [[],[]]
 
@@ -67,33 +65,34 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
             props=props.to(device)
 
             # Feed input to one of both models, dependent on rand_bool.
-            y_pred = model[rand_bool](X)
-            y_pred_batch.append(y_pred)
-
+            # y_pred = model[rand_bool](X)
+            y_pred = model.forward(rand_bool, X)
+            # input(rand_bool)
+            y_pred_batch[rand_bool].append(y_pred)
+            rand_counters[rand_bool] += 1
             # Calculate gradients.
             with torch.no_grad():
 
                 # NDCG_train currently unused, maybe we want toi report this as well?
                 grad, NDCG_train, NDCG_train_at5 = LRCrit.calculate_gradient_and_NDCG(y_pred, Y)
-                grad_batch.append(grad)
+                grad_batch[rand_bool].append(grad)
                 # if dynamic_hist:
                 #     dcg_pred_elements = NDCG_relevance_grade.squeeze() / torch.log2(torch.argsort(torch.argsort(out_val.squeeze(), descending=True)).float() + 2)
                 #     idx = torch.argsort(out_val, descending=True)[:5]
                 trn_ndcg[rand_bool].append(NDCG_train_at5)
 
             # Apply gradients.
-            count += 1
-            if count % batch_size == 0:
-                for grad, y_pred in zip(grad_batch, y_pred_batch):
+            if rand_counters[rand_bool] % batch_size == 0:
+                for grad, y_pred in zip(grad_batch[rand_bool], y_pred_batch[rand_bool]):
                     y_pred.backward(grad / batch_size)
 
                 # todo: check necessary
-                torch.nn.utils.clip_grad_norm_(model[rand_bool].parameters(), 10)
-                optimizers[rand_bool].step()
-                model[rand_bool].zero_grad()
+                model.clip_grad(rand_bool)
+                model.step(rand_bool)
 
                 # reset grad_batch, y_pred_batch used for gradient_acc
-                grad_batch, y_pred_batch = [], []
+                grad_batch[rand_bool], y_pred_batch[rand_bool] = [], []
+                rand_counters[rand_bool] = 0
 
 
         # Validation below
@@ -109,7 +108,7 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
 
                 X_V = X_V.to(device)
                 Y_V = Y_V.to(device)
-                out_val = model[rand_bool_V](X_V)
+                out_val = model.forward(rand_bool_V, X_V)
                 ranking_prediction_val = prediction_to_property_ranking(out_val, props_V)
 
                 for prop in ranking_prediction_val.squeeze():
@@ -123,13 +122,8 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
         io.save_val_predictions(model_id, "\n".join(pred_string))
         io.save_model(model_id, model)
 
-
-        trn_at_end = []
-
-        trn_at_end = []
-
         # ndcg@5 for train in [total, rand_bool=0, rand_bool=1]
-        trn_at_5 = [np.mean(trn_ndcg[0] + trn_ndcg[1]), np.mean(trn_ndcg[0]), np.mean(trn_ndcg[0])]
+        trn_at_5 = [np.mean(trn_ndcg[0] + trn_ndcg[1]), np.mean(trn_ndcg[0]), np.mean(trn_ndcg[1])]
 
         # ndcg@5 for validation in [total, rand_bool=0, rand_bool=1]
         val_at_5 = [np.mean(val_ndcgs_at5[0]+val_ndcgs_at5[1]), np.mean(val_ndcgs_at5[0]), np.mean(val_ndcgs_at5[1])]
@@ -149,25 +143,10 @@ def prediction_to_property_ranking(prediction, properties):
 def train_main(hyperparameters, fold_config):
 
     if fold_config != "k_folds":
-        dataset = BookingDataset(fold_config,
-                                 artificial_relevance=hyperparameters["artificial_relevance"],
-                                 uniform_relevance=hyperparameters["uniform_relevance"],
-                                 use_priors=hyperparameters["use_priors"])
+        dataset = BookingDataset(fold_config, hyperparameters)
         print("Done\nDrawing cards... WAIT! IS IT?!?")
         print("Summoning the forbidden one...")
-        model = []
-        model.append(ExodiaNet(dataset.feature_no,
-                          hyperparameters['layer_size'],
-                          hyperparameters['layers'],
-                          hyperparameters['attention_layer_idx'],
-                          hyperparameters['resnet'],
-                          hyperparameters['relu_slope']))
-        model.append(ExodiaNet(dataset.feature_no,
-                          hyperparameters['layer_size'],
-                          hyperparameters['layers'],
-                          hyperparameters['attention_layer_idx'],
-                          hyperparameters['resnet'],
-                          hyperparameters['relu_slope']))
+        model = ModelWrapper(dataset.feature_no, hyperparameters)
 
         print("Done, It's time to d-d-d-ddd-d-d-d-dduel!")
         print("ExodiaNet enters the battlefield...")

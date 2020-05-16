@@ -6,12 +6,71 @@ from torch import nn
 # De hele eindpresentatie heeft zacht yu-gi-oh muziek op de achtergrond.
 # Add memes here
 
+class ModelWrapper:
+    """Wrapper class for the model allowing for parallel model initialization"""
+
+    def __init__(self, in_size, hyperparameters):
+        random_split = hyperparameters["split_on_random_bool"]
+
+        # DEPRECATED
+        prop_split = None
+
+        # if random_split and prop_split:
+        #     # [rand_bool, prop_known] = [[0, 1], [0, 1]]
+        #     self.models = [[], []]
+        #     self.forward = self.forward_both
+
+        if random_split:
+            self.models = [ExodiaNet(in_size, hyperparameters),
+                           ExodiaNet(in_size, hyperparameters)]
+            self.forward = self.forward_rand
+            self.step = self.split_step
+            self.optimizers = [torch.optim.Adam(self.models[0].parameters(), lr=hyperparameters['learning_rate']),
+                               torch.optim.Adam(self.models[1].parameters(), lr=hyperparameters['learning_rate'])]
+            self.clip_grad = self.clip_grad_split
+
+        else:
+            self.model = ExodiaNet(in_size, hyperparameters)
+            self.forward = self.forward_single
+            self.optimizer = torch.optim.Adam(self.model.parameters(), lr=hyperparameters['learning_rate'])
+            self.step = self.single_step
+            self.clip_grad = self.clip_grad_single
+
+    def forward_single(self, _, X):
+        return self.model(X)
+
+    def forward_rand(self, rand_bool, X):
+        """Forward function for the model when splitting on rand_bool"""
+        return self.models[rand_bool](X)
+
+    def single_step(self, _):
+        self.optimizer.step()
+        self.model.zero_grad()
+
+    def split_step(self, rand_bool):
+        self.optimizers[rand_bool].step()
+        self.models[rand_bool].zero_grad()
+
+    def clip_grad_split(self, rand_bool):
+        torch.nn.utils.clip_grad_norm_(self.models[rand_bool].parameters(), 10)
+
+
+    def clip_grad_single(self, rand_bool):
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 10)
+
+
+
 class ExodiaNet(nn.Module):
     """THE FORBIDDEN ONE"""
 
-    def __init__(self, in_size, layer_size, layers,
-                 attention_layer_idx, res, relu_slope):
+    def __init__(self, in_size, hyperparameters):
         super().__init__()
+
+        layer_size = hyperparameters['layer_size']
+        layers = hyperparameters['layers']
+        attention_layer_idx  = hyperparameters['attention_layer_idx']
+        res =  hyperparameters['resnet']
+        relu_slope = hyperparameters['relu_slope']
 
         self.in_size = in_size
         self.out_size = 1

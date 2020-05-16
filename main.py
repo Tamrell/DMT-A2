@@ -12,6 +12,7 @@ from codebase import train
 
 
 HYPERPARAMETERS = {
+    "fold": 0, # must be in [0, 1, 2]
     "epochs" : 100,
     "learning_rate" : 1e-4,
     "layers" : 5,
@@ -20,8 +21,14 @@ HYPERPARAMETERS = {
     "resnet" : True,
     "exp_ver": False,
 
-    "artificial_relevance": False,
+    "artificial_relevance": True,
+    "uniform_relevance": False,
     "lambda_batch_size": 50,
+    "split_on_random_bool": False,
+    # "split_on_known_property": False, SKIP
+    "ndcg@5": True,
+
+
     "use_priors": False,
 
     # These hyperparameters are not in the commandline arguments.
