@@ -44,10 +44,10 @@ def prediction_to_property_ranking(prediction, properties):
 def make_test_predictions(model, model_id):
     test_data = BookingDataset("test")
     with torch.no_grad():
-        pred_string = "srch_id,prop_id\n"
+        pred_string = ["srch_id,prop_id"]
         for search_id, X, rand_bool, props in test_data:
             out = model[rand_bool](X)
             ranking = prediction_to_property_ranking(out, props)
             for prop in ranking:
-                pred_string += f"{search_id},{prop.item()}\n"
-        io.save_test_predictions(model_id, pred_string)
+                pred_string.append(f"{search_id},{prop.item()}")
+        io.save_test_predictions(model_id, "\n".join(pred_string))

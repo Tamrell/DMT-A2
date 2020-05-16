@@ -12,12 +12,15 @@ from codebase import train
 
 
 HYPERPARAMETERS = {
-    "epochs" : 10,
+    "epochs" : 100,
     "learning_rate" : 1e-4,
-    "layers" : 3,
-    "layer_size" : 250,
-    "attention_layer_idx" : 1,  # -1 denotes no attention layer
+    "layers" : 2 ,
+    "layer_size" : 50,
+    "attention_layer_idx" : -1,  # -1 denotes no attention layer
     "resnet" : True,
+    "exp_ver": False,
+    "artificial_relevance": True,
+    "lambda_batch_size": 200,
 
     # These hyperparameters are not in the commandline arguments.
     "device" : None,
@@ -52,7 +55,7 @@ def set_device():
     global HYPERPARAMETERS
 
     # setting device on GPU if available, else CPU
-    device =  torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device =  torch.device('cpu')
     HYPERPARAMETERS['device'] = device
     print('Using device:', device)
     print()
@@ -63,6 +66,8 @@ def set_device():
         print('Memory Usage:')
         print('Allocated:', round(torch.cuda.memory_allocated(0)/1024**3,1), 'GB')
         print('Cached:   ', round(torch.cuda.memory_cached(0)/1024**3,1), 'GB')
+
+    return device
 
 
 def main(ARGS):
@@ -89,7 +94,9 @@ def main(ARGS):
         train.train_main(HYPERPARAMETERS, "k_folds")
 
     elif ARGS.hyperparameter_search:
+        device = set_device()
         for hyperparameters in generate_hyperparameters():
+            hyperparameters['device'] = device
             print(hyperparameters)
             train.train_main(hyperparameters, "dummy")
 

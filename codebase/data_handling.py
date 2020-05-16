@@ -5,23 +5,26 @@ import sys
 import time
 import torch
 from codebase import benchmark
+from datetime import timedelta
 
 #===================== Dataset for the model training ==============
 
 class BookingDataset():
 
-    def __init__(self, fold="dummy"):
+    def __init__(self, fold="dummy", artificial_relevance=False):
         """Class for holding a dataset.
             - Loads in segments to form a predefined fold (segment combination).
         """
-        not_for_train = ["srch_id", "relevance", "random_bool", "prop_id"]
+        not_for_train = ["srch_id", "relevance", "artificial_relevance", "random_bool", "prop_id"]
+
+        # not_for_train += [f"prior_information_{p}" for p in ["clicks", "bookings", "position"]]
 
         path = os.path.join("data", "train_segments", "train_segment_") ###################### I/O
         self.fold=fold
         if fold == "dummy":
             print("\n\n!!! TRAINING ON THE DUMMY FOLD !!!\n\n")
-            train_segments = [0, 1, 2, 4, 5, 6, 7, 8, 9]
-            val_segment = 3
+            train_segments = [0]#, 1, 2, 3, 4, 5, 6, 8, 9]
+            val_segment = 7
         elif fold == "full":
             print("\n\n!!! TRAINING ON THE FULL DATA!!!\n\n")
             train_segments = list(range(0, 10))
@@ -53,14 +56,14 @@ class BookingDataset():
             val_df = pd.read_csv(f"{path}{val_segment}.csv")           ###################### I/O
             train_df =  pd.read_csv(f"{path}{train_segments[0]}.csv")  ###################### I/O
 
+            for segment in train_segments[1:]:
+                train_df = train_df.append(pd.read_csv(f"{path}{segment}.csv")) ################ I/O
+
             #################### TEST the shift-rescale ################
             val_df = shift_rescale_columns(val_df, not_for_train)
             train_df = shift_rescale_columns(train_df, not_for_train)
             #########################################
 
-
-            for segment in train_segments[1:]:
-                train_df = train_df.append(pd.read_csv(f"{path}{segment}.csv")) ################ I/O
 
             self.search_no = len(train_df["srch_id"].unique())
             self.feature_no = train_df.shape[1] - len(not_for_train)
@@ -83,13 +86,20 @@ class BookingDataset():
             # Precompute batches
             for s, sub_df in train_df.groupby("srch_id"):
                 self.batches[s] = torch.from_numpy(sub_df.drop(columns=not_for_train).values).float()
-                self.relevances[s] = torch.from_numpy(sub_df[["relevance"]].values).float()
+
+                if artificial_relevance:
+                    self.relevances[s] = torch.from_numpy(sub_df[["artificial_relevance"]].values).float()
+                else:
+                    self.relevances[s] = torch.from_numpy(sub_df[["relevance"]].values).float()
                 self.rand_bools[s] = sub_df["random_bool"].tolist()[0]
                 self.props[s] = torch.from_numpy(sub_df[["prop_id"]].values)
 
             for s, sub_df in val_df.groupby("srch_id"):
                 self.val_batches[s] = torch.from_numpy(sub_df.drop(columns=not_for_train).values).float()
-                self.val_relevances[s] = torch.from_numpy(sub_df[["relevance"]].values).float()
+                if artificial_relevance:
+                    self.val_relevances[s] = torch.from_numpy(sub_df[["artificial_relevance"]].values).float()
+                else:
+                    self.val_relevances[s] = torch.from_numpy(sub_df[["relevance"]].values).float()
                 self.val_rand_bools[s] = sub_df["random_bool"].tolist()[0]
                 self.val_props[s] = torch.from_numpy(sub_df[["prop_id"]].values)
 
@@ -145,6 +155,12 @@ def preprocessing(train_path="", test_path=""):
 
     to_decide = []
 
+    to_normalize_special = ["prop_log_historical_price",
+                              "prop_location_score1",
+                              "prop_location_score2",
+                              "price_usd",
+                              "prop_starrating",
+                              "prop_review_score"]
 
     to_convert_on_occurrence = ["prop_country_id"
                                ,"visitor_location_country_id"
@@ -165,33 +181,46 @@ def preprocessing(train_path="", test_path=""):
     train_df = load_train()
 
     # Add relevance column # NOT TO USE AS FEATURE!!!!!
-    # train_df["relevance"] = train_df["click_bool"] + 4 * train_df["booking_bool"]
+    train_df["relevance"] = train_df["click_bool"] + 4 * train_df["booking_bool"]
+
+
+    # BIGBRAIN ARTIFICE RELEVANCT
+    train_df["artificial_relevance"] = -5 / train_df["position"]
+
+    train_df.loc[train_df["relevance"] > 0, "artificial_relevance"] = 0
+    train_df["artificial_relevance"] += train_df["relevance"]
+
 
     prior_dict = get_prior_dict(train_df) # ONLY USE WHEN YOU NEED STRONGER PREDICTIONS IN THE ENDGAME #RELEASEtheBEAST
 
-    # # Drop columns
-    # train_df = train_df.drop(to_drop + to_drop_exclusive, axis=1)
-    #
-    # # Special fill distances
-    # train_df = fill_distances(train_df)
-    #
-    # train_df = add_engineered_features(train_df, prior_dict)
-    #
-    # # Conversion to occurrence
-    # for c in to_convert_on_occurrence:
-    #     train_df = occurrence_based_conversion(train_df, c)
-    #
-    # # Skip to_decide
-    # train_df = train_df.drop(to_decide, axis=1)
-    #
-    # # Fill NaNs
-    # train_df["prop_review_score"] = train_df["prop_review_score"].fillna(0)
-    # train_df["prop_location_score2"] = train_df["prop_location_score2"].fillna(train_df["prop_location_score2"].median())
-    #
-    # # Finish up by saving the train data
-    # train_df = k_fold_segmentation(train_df)
-    print(f"Done in {time.time()-t} seconds")
+    # Drop columns
+    train_df = train_df.drop(to_drop + to_drop_exclusive, axis=1)
 
+    # Special fill distances
+    train_df = fill_distances(train_df)
+
+    for col in to_normalize_special:
+        train_df = normalize_per_value(train_df, "srch_id", col)
+        train_df = normalize_per_value(train_df, "prop_country_id", col)
+        train_df = normalize_per_value(train_df, "visitor_location_country_id", col)
+
+
+    train_df = add_engineered_features(train_df, prior_dict)
+
+    # Conversion to occurrence
+    for c in to_convert_on_occurrence:
+        train_df = occurrence_based_conversion(train_df, c)
+
+    # Skip to_decide
+    train_df = train_df.drop(to_decide, axis=1)
+
+    # Fill NaNs
+    train_df["prop_review_score"] = train_df["prop_review_score"].fillna(0)
+    train_df["prop_location_score2"] = train_df["prop_location_score2"].fillna(train_df["prop_location_score2"].median())
+
+    # Finish up by saving the train data
+    train_df = k_fold_segmentation(train_df)
+    print(f"Done in {time.time()-t} seconds")
     ###========= Test Preprocessing =========###
 
     print("Preprocessing test data...")
@@ -201,6 +230,16 @@ def preprocessing(train_path="", test_path=""):
     # Drop columns
     test_df = test_df.drop(to_drop, axis=1)
 
+    # Fill NaNs
+    test_df["prop_review_score"] = test_df["prop_review_score"].fillna(0)
+    test_df["prop_location_score2"] = test_df["prop_location_score2"].fillna(train_df["prop_location_score2"].median())
+
+
+    for col in to_normalize_special:
+        test_df = normalize_per_value(test_df, "srch_id", col)
+        test_df = normalize_per_value(test_df, "prop_country_id", col)
+        test_df = normalize_per_value(test_df, "visitor_location_country_id", col)
+
     # Add features
     test_df = add_engineered_features(test_df, prior_dict)
 
@@ -209,10 +248,6 @@ def preprocessing(train_path="", test_path=""):
 
     # Skip to_decide
     test_df = test_df.drop(to_decide, axis=1)
-
-    # Fill NaNs
-    test_df["prop_review_score"] = test_df["prop_review_score"].fillna(0)
-    test_df["prop_location_score2"] = test_df["prop_location_score2"].fillna(train_df["prop_location_score2"].median())
 
     # Handle occurrence conversion
     for c in to_convert_on_occurrence:
@@ -241,20 +276,53 @@ def add_engineered_features(df, prior_dict):
 
     return df
 
+def normalize_per_value(df, value, column):
+    df[f"{value} normalized {column}"] = df.groupby(value)[column].transform(lambda x: (x - x.mean()) / x.std())
+    df[f"{value} normalized {column}"] = df[f"{value} normalized {column}"].fillna(df[f"{value} normalized {column}"].mean())
+    return df
+
 def add_sine_cosine(df):
-    sine = []
-    cosine = []
+    relevant_dates = ["search", "arrival", "end"]
+    inf_dict = {d: {"sine": [], "cosine": []} for d in relevant_dates}
+    angle_booking_window = []
+
     dates = pd.to_datetime(df["date_time"])
-    for day in dates:
+    arrival_diff = df["srch_booking_window"]
+    end_diff = df["srch_length_of_stay"]
+
+    for day, arrival_day, end_day in zip(dates, arrival_diff, end_diff):
         total_days = 365
         if day.is_leap_year:
             total_days += 1
 
+        arrival_date = day + timedelta(days=arrival_day)
+        end_date = arrival_date + timedelta(days=end_day)
+
         daypos = 2 * np.pi / total_days * day.dayofyear
-        sine.append(np.sin(daypos))
-        cosine.append(np.cos(daypos))
-    df["day sin"] = sine
-    df["day cos"] = cosine
+        arrivalpos = 2 * np.pi / total_days * arrival_date.dayofyear
+        endpos = 2 * np.pi / total_days * arrival_date.dayofyear
+        angle_booking_window.append(arrivalpos-daypos)
+        for d, pos in zip(relevant_dates, [daypos, arrivalpos, endpos]):
+            inf_dict[d]["sine"].append(np.sin(pos))
+            inf_dict[d]["cosine"].append(np.cos(pos))
+
+    for d in relevant_dates:
+        df[f"{d} day sin"] = inf_dict[d]["sine"]
+        df[f"{d} day cos"] = inf_dict[d]["cosine"]
+
+    # df1 = pd.DataFrame((np.arctan2(df["arrival day sin"], df["arrival day cos"]) * 180 / np.pi).value_counts(bins=36))
+    # total_count_ = df1.sum()
+    # angles = [angle for angle in (np.arctan2(df["arrival day sin"], df["arrival day cos"]) * 180 / np.pi).tolist()]
+    # magnitudes = [0]*len(angles)
+    # for i, angle in enumerate(angles):
+    #     for ind, interval in enumerate(df1.index):
+    #         if angle in interval:
+    #             magnitudes[i] = df1.loc[ind]/total_count_
+    #
+    # df['window shopping level'] = magnitudes
+
+
+    df[f"angle_booking_window"] = angle_booking_window
     df = df.drop(columns=["date_time"])
     return df
 
