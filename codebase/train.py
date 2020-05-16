@@ -44,11 +44,13 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
 
         count = 0
         batch_size = hyperparameters['lambda_batch_size']
+        ndcg_dict = dict()
 
         # Prediciton & gradient accumulation
         grad_batch, y_pred_batch = [], []
-        # NDCG values for plotting with dynamic hist
-        trn_ndcg = list()
+        # NDCG values for plotting with dynamic hist first is for rand bool off.
+        trn_ndcg = [[],[]]
+
 
         total_batches = len(dataset)
 
@@ -77,7 +79,7 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
                 # if dynamic_hist:
                 #     dcg_pred_elements = NDCG_relevance_grade.squeeze() / torch.log2(torch.argsort(torch.argsort(out_val.squeeze(), descending=True)).float() + 2)
                 #     idx = torch.argsort(out_val, descending=True)[:5]
-                trn_ndcg.append(NDCG_train_at5)
+                trn_ndcg[rand_bool].append(NDCG_train_at5)
 
             # Apply gradients.
             count += 1
@@ -97,7 +99,9 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
         # Validation below
         with torch.no_grad():
             val_ndcgs = list()
-            val_ndcgs_at5 = list()
+
+            # [rand bool=0, rand_bool=1]
+            val_ndcgs_at5 = [[],[]]
             pred_string = ["srch_id,prop_id"]
             for search_id_V, X_V, Y_V, rand_bool_V, props_V in dataset.validation_batch_iter():
                 if torch.sum(Y) == 0:
@@ -113,12 +117,27 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
 
                 val_ndcg, val_ndcg_at5 = LRCrit.calc_NDCG_val(out_val, Y_V)
                 val_ndcgs.append(val_ndcg)
-                val_ndcgs_at5.append(val_ndcg_at5)
+                val_ndcgs_at5[rand_bool_V].append(val_ndcg_at5)
 
         model_id = io.add_model(hyperparameters)
         io.save_val_predictions(model_id, "\n".join(pred_string))
         io.save_model(model_id, model)
-        print(f"Trn NDCG@5: {np.mean(trn_ndcg):4f}, Val NDCG:{np.mean(val_ndcgs):4f}, Val NDCG@5: {np.mean(val_ndcgs_at5):4f}, model_id: {model_id}, (Epoch time: {time.time()-t:4f})")
+
+
+        trn_at_end = []
+
+        trn_at_end = []
+
+        # ndcg@5 for train in [total, rand_bool=0, rand_bool=1]
+        trn_at_5 = [np.mean(trn_ndcg[0] + trn_ndcg[1]), np.mean(trn_ndcg[0]), np.mean(trn_ndcg[0])]
+
+        # ndcg@5 for validation in [total, rand_bool=0, rand_bool=1]
+        val_at_5 = [np.mean(val_ndcgs_at5[0]+val_ndcgs_at5[1]), np.mean(val_ndcgs_at5[0]), np.mean(val_ndcgs_at5[1])]
+
+        # epoch time
+        epoch_time = time.time()-t
+
+        print(f" (total/0/1) Trn NDCG@5: {trn_at_5[0]:.3f}/{trn_at_5[1]:.3f}/{trn_at_5[2]:.3f}, Val NDCG@5: {val_at_5[0]:.3f}/{val_at_5[1]:.3f}/{val_at_5[2]:.3f}, model_id: {model_id}, Val NDCG:{np.mean(val_ndcgs):4f}, (Epoch time: {epoch_time:4f})")
         d_hist.update(model_id, trn_ndcg)
 
 
@@ -132,6 +151,7 @@ def train_main(hyperparameters, fold_config):
     if fold_config != "k_folds":
         dataset = BookingDataset(fold_config,
                                  artificial_relevance=hyperparameters["artificial_relevance"],
+                                 uniform_relevance=hyperparameters["uniform_relevance"],
                                  use_priors=hyperparameters["use_priors"])
         print("Done\nDrawing cards... WAIT! IS IT?!?")
         print("Summoning the forbidden one...")

@@ -55,7 +55,7 @@ class lambdaRankCriterion:
             NDCG@5 of training query
         """
         rank_order_as_NDCG_denominator = torch.argsort(torch.argsort(Y.squeeze(), descending=True)) + 2
-        rank_order_as_NDCG_denominator_tensor = torch.tensor(rank_order_as_NDCG_denominator, dtype=float).view(-1, 1).to(self.device)
+        rank_order_as_NDCG_denominator_tensor = torch.as_tensor(rank_order_as_NDCG_denominator, dtype=float).view(-1, 1).to(self.device)
 
         ranknet_cost = self.calc_ranknet_gradients(y_pred, Y)
         NDCG_relevance_grade = self.adjust_for_EXP_NDCG_relevance(Y)

@@ -11,13 +11,12 @@ from datetime import timedelta
 
 class BookingDataset():
 
-    def __init__(self, fold="dummy", artificial_relevance=False, use_priors=True):
+    def __init__(self, fold="dummy", artificial_relevance=False, uniform_relevance=False, use_priors=True):
         """Class for holding a dataset.
             - Loads in segments to form a predefined fold (segment combination).
         """
         not_for_train = ["srch_id", "relevance", "artificial_relevance", "random_bool", "prop_id"]
         not_for_test = []
-        input(use_priors)
         if not use_priors:
             not_for_train += [f"prior_information_{p}" for p in ["clicks", "bookings", "position"]]
             not_for_test += [f"prior_information_{p}" for p in ["clicks", "bookings", "position"]]
@@ -47,12 +46,9 @@ class BookingDataset():
         print(f"Fold: {fold}\nTrain segments: {train_segments}\nValidation segment: {val_segment}")
         print("Shuffling the deck...")#"\nPreparing Dataset...")
         if fold == "test":
-            test_df = pd.read_csv(os.path.join("data", "test_preprocessed.csv"), nrows=200)
-            print(test_df.shape)
+            test_df = pd.read_csv(os.path.join("data", "test_preprocessed.csv"))
             test_df = test_df.drop(columns=[test_df.columns[0]] + not_for_test)
-            print(not_for_test)
             test_df = shift_rescale_columns(test_df, not_for_train)
-            print(test_df.shape)
 
             self.search_no = len(test_df["srch_id"].unique())
             self.feature_no = test_df.shape[1] - len(not_for_train) + 1
@@ -70,7 +66,10 @@ class BookingDataset():
             #################### TEST the shift-rescale ################
             val_df = shift_rescale_columns(val_df, not_for_train)
             train_df = shift_rescale_columns(train_df, not_for_train)
-            # train_df["artificial_relevance"] = train_df["artificial_relevance"].apply(lambda x: 0 if (0 > x) & (x > -2) else x/5)
+            if uniform_relevance:
+                train_df['relevance'] = train_df['relevance'].apply(lambda x: 1 if x > 0 else 0)
+                val_df['relevance'] = val_df['relevance'].apply(lambda x: 1 if x > 0 else 0)
+                # train_df["artificial_relevance"] = train_df["artificial_relevance"].apply(lambda x: 0 if (0 > x) & (x > -2) else x/10)
             #########################################
 
 
@@ -88,7 +87,7 @@ class BookingDataset():
         if fold == "test":
             # Precompute batches
             for s, sub_df in test_df.groupby("srch_id"):
-                self.batches[s] = torch.from_numpy(sub_df.drop(columns=[t for t in not_for_train if t != "relevance" ]).values).float()
+                self.batches[s] = torch.from_numpy(sub_df.drop(columns=list(set(not_for_train + not_for_test) & set(list(sub_df.columns)))).values).float()
                 self.rand_bools[s] = sub_df["random_bool"].tolist()[0]
                 self.props[s] = torch.from_numpy(sub_df[["prop_id"]].values)
         else:
@@ -184,22 +183,22 @@ def preprocessing(train_path="", test_path=""):
 
     # to_rescale_and_shift = []
 
-    print("Preprocessing training data...")
+    print("Preprocessing training data... 0/4", end="\r")
 
     t = time.time()
     train_df = load_train()
 
     # Add relevance column # NOT TO USE AS FEATURE!!!!!
-    train_df["relevance"] = train_df["click_bool"] + 4 * train_df["booking_bool"]
+    train_df["relevance"] = train_df["click_bool"] #+ 4 * train_df["booking_bool"]
 
 
     # BIGBRAIN ARTIFICE RELEVANCT
-    train_df["artificial_relevance"] = -5 / train_df["position"]
+    train_df["artificial_relevance"] = -1 / train_df["position"]**2
 
     train_df.loc[train_df["relevance"] > 0, "artificial_relevance"] = 0
     train_df["artificial_relevance"] += train_df["relevance"]
 
-
+    print("Preprocessing training data... 1/4", end="\r")
     prior_dict = get_prior_dict(train_df) # ONLY USE WHEN YOU NEED STRONGER PREDICTIONS IN THE ENDGAME #RELEASEtheBEAST
 
     # Drop columns
@@ -213,12 +212,15 @@ def preprocessing(train_path="", test_path=""):
         train_df = normalize_per_value(train_df, "prop_country_id", col)
         train_df = normalize_per_value(train_df, "visitor_location_country_id", col)
 
+    print("Preprocessing training data... 2/4", end="\r")
 
     train_df = add_engineered_features(train_df, prior_dict)
 
     # Conversion to occurrence
     for c in to_convert_on_occurrence:
         train_df = occurrence_based_conversion(train_df, c)
+
+    print("Preprocessing training data... 3/4", end="\r")
 
     # Skip to_decide
     train_df = train_df.drop(to_decide, axis=1)
@@ -296,6 +298,18 @@ def add_sine_cosine(df):
     angle_booking_window = []
 
     dates = pd.to_datetime(df["date_time"])
+
+    # convert to year
+    df["year"] = dates.dt.year
+
+    # convert to day of week
+    df["weekday"] = dates.dt.weekday
+
+    df["hour"] = dates.dt.hour
+
+    # df["hour sin"] = pass
+    # df["hour cos"] = pass
+
     arrival_diff = df["srch_booking_window"]
     end_diff = df["srch_length_of_stay"]
 
@@ -410,17 +424,17 @@ def occurrence_based_conversion(df, column):
     return df
 
 
-# =======================================
-# ================ TODO =================
-# =======================================
-
-def zero_center(df, column, srch_level=False):
-    df[column] -= df[column].mean()
-
-def unit_variance(df, column, srch_level=False):
-    df[column] /= df[column].std()
-
-# =======================================
+# # =======================================
+# # ================ TODO =================
+# # =======================================
+#
+# def zero_center(df, column, srch_level=False):
+#     df[column] -= df[column].mean()
+#
+# def unit_variance(df, column, srch_level=False):
+#     df[column] /= df[column].std()
+#
+# # =======================================
 
 
 def fill_distances(df):
@@ -529,10 +543,10 @@ def summarize_competitor_information(df):
 
 
 def load_train(path=os.path.join("data","training_set_VU_DM.csv")):
-    return pd.read_csv(path)
+    return pd.read_csv(path, nrows=200000)
 
 def load_test(path=os.path.join("data", "test_set_VU_DM.csv")):
-    return pd.read_csv(path)
+    return pd.read_csv(path, nrows=200000)
 
 
 if __name__ == '__main__':
