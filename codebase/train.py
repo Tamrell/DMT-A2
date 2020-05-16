@@ -132,7 +132,9 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
         epoch_time = time.time()-t
 
         print(f" (total/0/1) Trn NDCG@5: {trn_at_5[0]:.3f}/{trn_at_5[1]:.3f}/{trn_at_5[2]:.3f}, Val NDCG@5: {val_at_5[0]:.3f}/{val_at_5[1]:.3f}/{val_at_5[2]:.3f}, model_id: {model_id}, Val NDCG:{np.mean(val_ndcgs):4f}, (Epoch time: {epoch_time:4f})")
-        d_hist.update(model_id, trn_ndcg)
+
+        d_hist.update(model_id, trn_ndcg, val=False)
+        d_hist.update(model_id, val_ndcg, val=True)
 
 
 
