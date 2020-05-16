@@ -51,7 +51,7 @@ def generate_hyperparameters():
         hp['resnet'] = resnet
         yield hp
 
-    RELU_SLOPE = [0.001]
+    RELU_SLOPE = [0.001, 0.1]
     for relu_slope in RELU_SLOPE:
         hp = copy(hyperparameters)
         hp['relu_slope'] = relu_slope
