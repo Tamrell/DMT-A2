@@ -19,7 +19,9 @@ hyperparameters = {
 
 
 def generate_hyperparameters():
-    LAYER_SIZE = [20, 80, 320]
+    yield hyperparameters
+
+    LAYER_SIZE = [20, 320]
     for layer_size in LAYER_SIZE:
         hp = copy(hyperparameters)
         hp['layer_size'] = layer_size
