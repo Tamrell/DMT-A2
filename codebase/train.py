@@ -119,7 +119,8 @@ def train(model, dataset, hyperparameters, dynamic_hist=False):
         io.save_val_predictions(model_id, "\n".join(pred_string))
         io.save_model(model_id, model)
         print(f"Trn NDCG@5: {np.mean(trn_ndcg):4f}, Val NDCG:{np.mean(val_ndcgs):4f}, Val NDCG@5: {np.mean(val_ndcgs_at5):4f}, model_id: {model_id}, (Epoch time: {time.time()-t:4f})")
-        d_hist.update(model_id, trn_ndcg)
+        d_hist.update(model_id, trn_ndcg, val=False)
+        d_hist.update(model_id, val_ndcg, val=True)
 
 
 

@@ -5,8 +5,8 @@ hyperparameters = {
     "learning_rate" : 1e-4,
     "layers" : 4,
     "layer_size" : 80,
-    "attention_layer_idx" : 1,  # -1 denotes no attention layer
     "resnet" : True,
+    "attention_layer_idx" : 1,  # -1 denotes no attention layer
     "lambda_batch_size": 150,
     "relu_slope" : 0.01,
 
@@ -39,16 +39,16 @@ def generate_hyperparameters():
         hp['layers'] = layers
         yield hp
 
-    ATTENTION_LAYER_IDX = [-1, 0, 2, 3]
-    for attention_layer_idx in ATTENTION_LAYER_IDX:
-        hp = copy(hyperparameters)
-        hp['attention_layer_idx'] = attention_layer_idx
-        yield hp
-
     RESNET = [False]
     for resnet in RESNET:
         hp = copy(hyperparameters)
         hp['resnet'] = resnet
+        yield hp
+
+    ATTENTION_LAYER_IDX = [-1, 0, 2, 3]
+    for attention_layer_idx in ATTENTION_LAYER_IDX:
+        hp = copy(hyperparameters)
+        hp['attention_layer_idx'] = attention_layer_idx
         yield hp
 
     RELU_SLOPE = [0.001, 0.1]

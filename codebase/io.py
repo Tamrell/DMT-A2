@@ -11,12 +11,13 @@ MODEL_DIR = os.path.join("results", "models")
 LOG_DIR = os.path.join("results", "logs")
 VALIDATION_DIR = os.path.join("results", "validation_predictions")
 TEST_DIR = os.path.join("results", "test_predictions")
-HISTOGRAM_DIR = os.path.join("results", "histograms")
+HISTOGRAM_VAL_DIR = os.path.join("results", "histograms_validation")
+HISTOGRAM_TRN_DIR = os.path.join("results", "histograms_train")
 JSON_DIR = os.path.join("results", "jsons")
 
 # Make sure to add any new directories you make to this loop.
 for directory in (MODEL_DIR, LOG_DIR, VALIDATION_DIR, TEST_DIR,
-                  HISTOGRAM_DIR, JSON_DIR):
+                  HISTOGRAM_VAL_DIR, HISTOGRAM_TRN_DIR, JSON_DIR):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
@@ -34,7 +35,8 @@ def get_tracking_df(init=''):
 
         if user_input == 'y':
             print("An empty tracking csv was created")
-            return pd.DataFrame()
+            df = pd.DataFrame({"model_id" : []}).astype({"model_id": "int32"})
+            return df.set_index("model_id")
 
         else:
             print("The program cannot execute without a tracking csv")
@@ -75,14 +77,29 @@ def save_json(model_id, dictionary):
         save_f.write(json.dumps(dictionary))
 
 def load_json(model_id):
+    """out: dict"""
     with open(os.path.join(JSON_DIR, f"{model_id}.json")) as load_f:
         return json.loads(load_f.read())
+
+def load_jsons(model_ids=[]):
+    """ Return the dataframe comprised of the json files assosiated with the
+    input model ids, if no model ids are provided, use all stored json files.
+    out: DataFrame"""
+    df = pd.DataFrame()
+    for filename in os.listdir(JSON_DIR):
+        model_id = int(filename[:-5])
+        dictionary = load_json(model_id)
+        dictionary['model_id'] = model_id
+        df = df.append(dictionary, ignore_index=True)
+    df = df.astype({'model_id': 'int32'})
+    return df.set_index('model_id')
 
 def save_model(model_id, model):
     with open(os.path.join(MODEL_DIR, f"{model_id}.pkl"), 'wb') as save_f:
         pickle.dump(model, save_f)
 
 def load_model(model_id):
+    """out: ExodiaNet"""
     with open(os.path.join(MODEL_DIR, f"{model_id}.pkl"), 'rb') as load_f:
         return pickle.load(load_f)
 
@@ -91,6 +108,7 @@ def save_val_predictions(model_id, pred_str):
         save_f.write(pred_str)
 
 def load_val_predictions(model_id):
+    """out: DataFrame"""
     return pd.read_csv(os.path.join(VALIDATION_DIR, f"{model_id}.csv"))
 
 def save_test_predictions(model_id, pred_str):
@@ -98,10 +116,20 @@ def save_test_predictions(model_id, pred_str):
         save_f.write(pred_str)
 
 def load_test_predictions(model_id):
+    """out: DataFrame"""
     return pd.read_csv(os.path.join(TEST_DIR, f"{model_id}.csv"))
 
-def save_histogram(model_id):
-    plt.savefig(os.path.join(HISTOGRAM_DIR, f"{model_id}.png"))
+def save_histogram(model_id, val=False):
+    if val:
+        plt.savefig(os.path.join(HISTOGRAM_VAL_DIR, f"{model_id}.png"))
+    else:
+        plt.savefig(os.path.join(HISTOGRAM_TRN_DIR, f"{model_id}.png"))
+
+def save_histogram_trn(model_id):
+    save_histogram(model_id, val=False)
+
+def save_histogram_val(model_id):
+    save_histogram(model_id, val=True)
 
 
 TRACKING_DF = get_tracking_df()

@@ -29,12 +29,12 @@ class DynamicHistogram():
         #Other stuff
         self.ax.grid()
 
-    def update(self, model_id, data):
+    def update(self, model_id, data, val=False):
         #Update data (with the new _and_ the old points)
         for bar in self.bars:
             bar.remove()
         (_, _, self.bars) = plt.hist(data, bins=self.bins)
-        save_histogram(model_id)
+        save_histogram(model_id, val=val)
 
         if not self.verbose:
             return
