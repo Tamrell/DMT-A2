@@ -17,7 +17,6 @@ hyperparameters = {
 
     # Do not change these
     "epochs" : 2,
-    "use_priors": True,
     "artificial_relevance": False,
     "exp_ver": False,
     "device" : None,
