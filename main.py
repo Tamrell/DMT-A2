@@ -12,7 +12,7 @@ from codebase import train
 
 
 HYPERPARAMETERS = {
-    "fold": 0, # must be in [0, 1, 2]
+    # "fold": 0, # must be in [0, 1, 2]
     "epochs" : 100,
     "learning_rate" : 1e-4,
     "layers" : 5,

@@ -1,4 +1,5 @@
 from copy import copy
+from codebase import train
 
 hyperparameters = {
     "learning_rate" : 1e-4,
@@ -8,6 +9,11 @@ hyperparameters = {
     "attention_layer_idx" : 1,  # -1 denotes no attention layer
     "lambda_batch_size": 150,
     "relu_slope" : 0.01,
+
+    "artificial_relevance": False,
+    "uniform_relevance": False,
+    "split_on_random_bool": False,
+    "ndcg@5": False,
 
     # Do not change these
     "epochs" : 2,
@@ -24,7 +30,13 @@ hyperparameter_settings = {
     "resnet": [False],
     "attention_layer_idx": [-1, 0, 2, 3],  # -1 denotes no attention layer
     "relu_slope": [0.001, 0.1],
-    "lambda_batch_size": [50, 450]
+    "lambda_batch_size": [50, 450],
+
+    "artificial_relevance": [False],
+    "uniform_relevance": [False],
+    "split_on_random_bool": [False],
+    "ndcg@5": [True]
+
 }
 
 
@@ -43,3 +55,4 @@ if __name__ == "__main__":
     order = ["layers", "layer_size", "resnet"]
     for _hyperparameters in generate_hyperparameters(order):
         print(_hyperparameters)
+        train.train_main(_hyperparameters, eval_last=True)
