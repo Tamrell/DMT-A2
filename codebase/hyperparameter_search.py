@@ -10,7 +10,6 @@ hyperparameters = {
     "lambda_batch_size": 150,
     "relu_slope" : 0.01,
 
-    "artificial_relevance": False,
     "uniform_relevance": False,
     "split_on_random_bool": False,
     "ndcg@5": False,
