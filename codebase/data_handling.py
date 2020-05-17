@@ -30,16 +30,19 @@ class BookingDataset():
         not_for_test = []
 
         # FIX PRIOR PER FOLD/FULL  L E A K Y  B O I
+
+        priors_default = [f"prior_information_{p}" for p in ["clicks", "bookings", "position"]]
         to_remove = ["", "0_", "1_", "2_"]
         if use_priors:
             if isinstance(fold, int):
                 to_remove.pop(fold+1)
-                to_remove.pop(0)
             else:
                 to_remove = ["0_", "1_", "2_"]
+        else:
+            if fold == "test":
+                not_for_test += priors_default
         for prefix in to_remove:
             not_for_train += [f"{prefix}prior_information_{p}" for p in ["clicks", "bookings", "position"]]
-            not_for_test += [f"{prefix}prior_information_{p}" for p in ["clicks", "bookings", "position"]]
 
 
         path = os.path.join("data", "train_segments", "train_segment_") ###################### I/O
@@ -74,8 +77,12 @@ class BookingDataset():
         print("Shuffling the deck...")#"\nPreparing Dataset...")
         if fold == "test":
             test_df = pd.read_csv(os.path.join("data", "test_preprocessed.csv"))
+            test_df = test_df[[c for c in test_df.columns if c not in priors_default] + priors_default]
+            not_for_test += self.toggle_features(test_df, hyperparameters)
+            not_for_test = list(set(not_for_test))
             test_df = test_df.drop(columns=[test_df.columns[0]] + not_for_test)
             test_df = shift_rescale_columns(test_df, not_for_train + ["random_bool"])
+
 
         else:
             # val_df = pd.read_csv(f"{path}{val_segment}.csv", nrows=2000)           ###################### I/O
@@ -84,27 +91,13 @@ class BookingDataset():
             val_df = pd.read_csv(f"{path}{val_segment}.csv")           ###################### I/O
             train_df =  pd.read_csv(f"{path}{train_segments[0]}.csv")  ###################### I/O
 
-            if not hyperparameters["use_priors"]:
-                not_for_train += [i for i in train_df.columns if "prior" in i]
-
-            if not hyperparameters["normalize_per_subset"]:
-                not_for_train += [i for i in train_df.columns if "normalized" in i]
-
-            if not hyperparameters["datetime_shenanigans"]:
-                not_for_train += [i for i in train_df.columns if (("day" in i) or ("sin" in i) or ("cos" in i))]
-                not_for_train += ["year", "window_shopping_propensity", "angle_booking_window"]
-
-            if not hyperparameters["travelling_within_country_bool"]:
-                not_for_train += [i for i in train_df.columns if "comp" in i]
-
-            if not hyperparameters["occurrence conversion"]:
-                not_for_train += ["prop_country_id", "visitor_location_country_id","srch_destination_id","site_id","prop_occ"]
-
+            not_for_train += self.toggle_features(train_df, hyperparameters)
             not_for_train = list(set(not_for_train))
 
             for segment in train_segments[1:]:
                 train_df = train_df.append(pd.read_csv(f"{path}{segment}.csv")) ################ I/O
-
+            train_df = train_df[[c for c in train_df.columns if c not in priors_default] + priors_default]
+            val_df = val_df[[c for c in val_df.columns if c not in priors_default] + priors_default]
             #################### TEST the shift-rescale ################
             val_df = shift_rescale_columns(val_df, not_for_train+["random_bool"])
             train_df = shift_rescale_columns(train_df, not_for_train+["random_bool"])
@@ -156,6 +149,27 @@ class BookingDataset():
                 self.val_props[s] = torch.from_numpy(sub_df[["prop_id"]].values)
 
             self.val_len = len(self.val_batches)
+
+    def toggle_features(self, df, hyperparameters):
+        """Returns a list of features that should be removed according to the hyperparameters"""
+        toggle = []
+        if not hyperparameters["use_priors"]:
+            toggle += [i for i in df.columns if "prior" in i]
+
+        if not hyperparameters["normalize_per_subset"]:
+            toggle += [i for i in df.columns if "normalized" in i]
+
+        if not hyperparameters["datetime_shenanigans"]:
+            toggle += [i for i in df.columns if (("day" in i) or ("sin" in i) or ("cos" in i))]
+            toggle += ["year", "window_shopping_propensity", "angle_booking_window"]
+
+        if not hyperparameters["travelling_within_country_bool"]:
+            toggle += [i for i in df.columns if "comp" in i]
+
+        if not hyperparameters["occurrence conversion"]:
+            toggle += ["prop_country_id", "visitor_location_country_id","srch_destination_id","site_id","prop_occ"]
+
+        return toggle
 
     def get_val(self, key):
         return key, self.val_batches[key], self.val_relevances[key], int(self.val_rand_bools[key]), self.val_props[key]
@@ -239,7 +253,7 @@ def preprocessing(train_path="", test_path=""):
     train_df = load_train()
 
     # Add relevance column # NOT TO USE AS FEATURE!!!!!
-    train_df["relevance"] = train_df["click_bool"] #+ 4 * train_df["booking_bool"]
+    train_df["relevance"] = train_df["click_bool"] + 4 * train_df["booking_bool"]
 
 
     # BIGBRAIN ARTIFICE RELEVANCT

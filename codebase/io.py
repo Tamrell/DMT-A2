@@ -86,7 +86,11 @@ def load_jsons(model_ids=[]):
     input model ids, if no model ids are provided, use all stored json files.
     out: DataFrame"""
     df = pd.DataFrame()
-    for filename in os.listdir(JSON_DIR):
+    if len(model_ids) > 0:
+        iterator = [f'{model_id}.json' for model_id in model_ids]
+    else:
+        iterator = os.listdir(JSON_DIR)
+    for filename in iterator:
         model_id = int(filename[:-5])
         dictionary = load_json(model_id)
         dictionary['model_id'] = model_id

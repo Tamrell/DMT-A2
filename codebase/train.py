@@ -155,7 +155,7 @@ def train_io(model, dataset, hyperparameters, dynamic_hist=False):
 
     LRCrit = LC.lambdaRankCriterion(EXP_VER, device, TEST_SIGMA, crit_at5)
     gt = evaluation.load_ground_truth() ########### HACKS
-    d_hist = DynamicHistogram(dynamic_hist)
+    # d_hist = DynamicHistogram(dynamic_hist)
 
     io_dict = {"model_id": [],
                "epoch_time": [],
@@ -226,17 +226,10 @@ def train_io(model, dataset, hyperparameters, dynamic_hist=False):
 
         model_id = io.add_model(hyperparameters)
 
-        io_dict = {"model_id": [],
-               "epoch_time": [],
-               "trn_ndcg": [],
-               "trn_ndcg@5": [],
-               "val_ndcg": [],
-               "val_ndcg@5": []}
-
         io_dict["model_id"].append(model_id)
         io_dict["epoch_time"].append(time.time()-t)
         io_dict["trn_ndcg@5"].append(np.mean(trn_ndcg[0] + trn_ndcg[1]))
-        io_dict["trn_ndcg"].append(np.mean(trn_ndcg_end[0] + trn_ndcg_end[1]))
+        io_dict["trn_ndcg"].append(np.mean(trn_ndcg_end))
         io.save_model(model_id, model)
 
     # Validation below
@@ -263,7 +256,7 @@ def train_io(model, dataset, hyperparameters, dynamic_hist=False):
             val_ndcgs_at5[rand_bool_V].append(val_ndcg_at5)
 
         io_dict["val_ndcg@5"].append(np.mean(val_ndcgs_at5[0] + val_ndcgs_at5[1]))
-        io_dict["val_ndcg"].append(np.mean(val_ndcgs[0] + val_ndcgs[1]))
+        io_dict["val_ndcg"].append(np.mean(val_ndcgs))
 
         io.save_json(model_id, io_dict)
 
@@ -283,14 +276,18 @@ def train_io(model, dataset, hyperparameters, dynamic_hist=False):
 
         print(f" (total/0/1) Trn NDCG@5: {trn_at_5[0]:.3f}/{trn_at_5[1]:.3f}/{trn_at_5[2]:.3f}, Val NDCG@5: {val_at_5[0]:.3f}/{val_at_5[1]:.3f}/{val_at_5[2]:.3f}, model_id: {model_id}, Val NDCG:{np.mean(val_ndcgs):4f}, (Epoch time: {epoch_time:4f})")
 
-        d_hist.update(model_id, trn_ndcg, val=False)
-        d_hist.update(model_id, val_ndcg, val=True)
+        # d_hist.update(model_id, trn_ndcg, val=False)
+        # d_hist.update(model_id, val_ndcg, val=True)
 
 def prediction_to_property_ranking(prediction, properties):
     ranking = properties.squeeze()[torch.argsort(prediction.squeeze(), descending=True)]
     return ranking.squeeze()
 
 def train_main(hyperparameters, fold_config):
+    print("Hyperparameters:")
+    for param in sorted(list(hyperparameters)):
+        print(f"\t{param}: {hyperparameters[param]}")
+
 
     if fold_config != "k_folds":
         dataset = BookingDataset(fold_config, hyperparameters)

@@ -31,12 +31,12 @@ HYPERPARAMETERS = {
 
 
     # Feature groups
-    "use_priors": False,
-    "normalize_per_subset": False,
-    "datetime_shenanigans": False,
-    "summarize_competitors": False,
-    "travelling_within_country_bool": False,
-    "occurrence conversion": False,
+    "use_priors": True,
+    "normalize_per_subset": True,
+    "datetime_shenanigans": True,
+    "summarize_competitors": True,
+    "travelling_within_country_bool": True,
+    "occurrence conversion": True,
 
 
     # These hyperparameters are not in the commandline arguments.
@@ -99,8 +99,6 @@ def main(ARGS):
 
     elif ARGS.predict_test:
         model = io.load_model(ARGS.predict_test)
-        model[0] = model[0].to("cpu")
-        model[1] = model[1].to("cpu")
         make_test_predictions(model, ARGS.predict_test, HYPERPARAMETERS)
 
     elif ARGS.train:
@@ -114,7 +112,6 @@ def main(ARGS):
         device = set_device()
         for hyperparameters in generate_hyperparameters():
             hyperparameters['device'] = device
-            print(hyperparameters)
             train.train_main(hyperparameters, "k_folds")
 
     else:

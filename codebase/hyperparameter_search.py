@@ -63,11 +63,11 @@ def generate_hyperparameters(order = [param for param in hyperparameter_settings
             yield hp
 
 
-# Example usage
-if __name__ == "__main__":
-    # order can be different for different runs.
-    # order = [param for param in hyperparameter_settings]
-    order = [param for param in hyperparameter_settings][::-1]
-    for _hyperparameters in generate_hyperparameters(order):
-        print(_hyperparameters)
-        train.train_main(_hyperparameters, eval_last=True)
+# # Example usage
+# if __name__ == "__main__":
+#     # order can be different for different runs.
+#     # order = [param for param in hyperparameter_settings]
+#     order = [param for param in hyperparameter_settings]
+#     for _hyperparameters in generate_hyperparameters(order):
+#         print(_hyperparameters)
+#         train.train_main(_hyperparameters, "eval_last=True")
