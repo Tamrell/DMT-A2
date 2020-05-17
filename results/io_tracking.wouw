@@ -1,0 +1,3 @@
+,artificial_relevance,attention_layer_idx,datetime_shenanigans,device,epochs,exp_ver,lambda_batch_size,layer_size,layers,learning_rate,ndcg@5,normalize_per_subset,occurrence conversion,relu_slope,resnet,split_on_random_bool,summarize_competitors,travelling_within_country_bool,uniform_relevance,use_priors
+0,0.0,1.0,0.0,cpu,2.0,0.0,150.0,80.0,4.0,0.0001,0.0,0.0,0.0,0.01,1.0,0.0,0.0,0.0,0.0,0.0
+1,0.0,1.0,0.0,cpu,2.0,0.0,150.0,80.0,4.0,0.0001,0.0,0.0,0.0,0.01,1.0,0.0,0.0,0.0,0.0,0.0

@@ -20,7 +20,15 @@ hyperparameters = {
     "use_priors": True,
     "artificial_relevance": False,
     "exp_ver": False,
-    "device" : None
+    "device" : None,
+    # Feature groups
+    "use_priors": False,
+    "normalize_per_subset": False,
+    "datetime_shenanigans": False,
+    "summarize_competitors": False,
+    "travelling_within_country_bool": False,
+    "occurrence conversion": False
+
 }
 
 hyperparameter_settings = {
@@ -32,15 +40,22 @@ hyperparameter_settings = {
     "relu_slope": [0.001, 0.1],
     "lambda_batch_size": [50, 450],
 
-    "artificial_relevance": [False],
-    "uniform_relevance": [False],
-    "split_on_random_bool": [False],
-    "ndcg@5": [True]
+    "artificial_relevance": [True],
+    "uniform_relevance": [True],
+    "split_on_random_bool": [True],
+    "ndcg@5": [True],
+
+    "use_priors": [True],
+    "normalize_per_subset": [True],
+    "datetime_shenanigans": [True],
+    "summarize_competitors": [True],
+    "travelling_within_country_bool": [True],
+    "occurrence conversion": [True]
 
 }
 
 
-def generate_hyperparameters(order):
+def generate_hyperparameters(order = [param for param in hyperparameter_settings]):
     yield hyperparameters
     for hyperparameter_name in order:
         hp = copy(hyperparameters)
@@ -52,7 +67,8 @@ def generate_hyperparameters(order):
 # Example usage
 if __name__ == "__main__":
     # order can be different for different runs.
-    order = ["layers", "layer_size", "resnet"]
+    # order = [param for param in hyperparameter_settings]
+    order = [param for param in hyperparameter_settings][::-1]
     for _hyperparameters in generate_hyperparameters(order):
         print(_hyperparameters)
         train.train_main(_hyperparameters, eval_last=True)

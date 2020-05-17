@@ -21,15 +21,23 @@ HYPERPARAMETERS = {
     "resnet" : True,
     "exp_ver": False,
 
-    "artificial_relevance": True,
-    "uniform_relevance": False,
     "lambda_batch_size": 50,
     "split_on_random_bool": False,
     # "split_on_known_property": False, SKIP
     "ndcg@5": True,
+    "artificial_relevance": False,
+    "uniform_relevance": False,
 
 
+
+    # Feature groups
     "use_priors": False,
+    "normalize_per_subset": False,
+    "datetime_shenanigans": False,
+    "summarize_competitors": False,
+    "travelling_within_country_bool": False,
+    "occurrence conversion": False,
+
 
     # These hyperparameters are not in the commandline arguments.
     "device" : None,
@@ -107,7 +115,7 @@ def main(ARGS):
         for hyperparameters in generate_hyperparameters():
             hyperparameters['device'] = device
             print(hyperparameters)
-            train.train_main(hyperparameters, "dummy")
+            train.train_main(hyperparameters, "k_folds")
 
     else:
         assert ARGS.dummy, "If not train, then the dummy flaggy should be used. You dumdum"

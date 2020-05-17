@@ -19,12 +19,12 @@ class BookingDataset():
                      1: [5, 6],
                      2: [7, 8]}
 
+        not_for_train = ["srch_id", "relevance", "artificial_relevance", "random_bool", "prop_id"]
 
         artificial_relevance = hyperparameters["artificial_relevance"]
         uniform_relevance = hyperparameters["uniform_relevance"]
         use_priors = hyperparameters["use_priors"]
 
-        not_for_train = ["srch_id", "relevance", "artificial_relevance", "random_bool", "prop_id"]
         if not hyperparameters["split_on_random_bool"]:
             not_for_train.pop(3)
         not_for_test = []
@@ -77,15 +77,30 @@ class BookingDataset():
             test_df = test_df.drop(columns=[test_df.columns[0]] + not_for_test)
             test_df = shift_rescale_columns(test_df, not_for_train + ["random_bool"])
 
-            self.search_no = len(test_df["srch_id"].unique())
-            self.feature_no = test_df.shape[1] - len(not_for_train) + 1
-
         else:
             # val_df = pd.read_csv(f"{path}{val_segment}.csv", nrows=2000)           ###################### I/O
             # train_df =  pd.read_csv(f"{path}{train_segments[0]}.csv", nrows=2000)  ###################### I/O
 
             val_df = pd.read_csv(f"{path}{val_segment}.csv")           ###################### I/O
             train_df =  pd.read_csv(f"{path}{train_segments[0]}.csv")  ###################### I/O
+
+            if not hyperparameters["use_priors"]:
+                not_for_train += [i for i in train_df.columns if "prior" in i]
+
+            if not hyperparameters["normalize_per_subset"]:
+                not_for_train += [i for i in train_df.columns if "normalized" in i]
+
+            if not hyperparameters["datetime_shenanigans"]:
+                not_for_train += [i for i in train_df.columns if (("day" in i) or ("sin" in i) or ("cos" in i))]
+                not_for_train += ["year", "window_shopping_propensity", "angle_booking_window"]
+
+            if not hyperparameters["travelling_within_country_bool"]:
+                not_for_train += [i for i in train_df.columns if "comp" in i]
+
+            if not hyperparameters["occurrence conversion"]:
+                not_for_train += ["prop_country_id", "visitor_location_country_id","srch_destination_id","site_id","prop_occ"]
+
+            not_for_train = list(set(not_for_train))
 
             for segment in train_segments[1:]:
                 train_df = train_df.append(pd.read_csv(f"{path}{segment}.csv")) ################ I/O
@@ -112,6 +127,8 @@ class BookingDataset():
         self.val_props = {}
 
         if fold == "test":
+            self.search_no = len(test_df["srch_id"].unique())
+            self.feature_no = test_df.shape[1] - len(not_for_train) + 1
             # Precompute batches
             for s, sub_df in test_df.groupby("srch_id"):
                 self.batches[s] = torch.from_numpy(sub_df.drop(columns=list(set(not_for_train + not_for_test) & set(list(sub_df.columns)))).values).float()
@@ -149,7 +166,7 @@ class BookingDataset():
 
     def __getitem__(self, key):
         if self.fold == "test":
-            return key, self.batches[key], int(self.rand_bools[key]), self.props[key]
+            return key, self.batches[key], self.rand_bools[key], self.props[key]
 
 
         Y =  self.relevances[key]

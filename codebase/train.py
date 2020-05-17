@@ -197,7 +197,6 @@ def train_io(model, dataset, hyperparameters, dynamic_hist=False):
             # Feed input to one of both models, dependent on rand_bool.
             # y_pred = model[rand_bool](X)
             y_pred = model.forward(rand_bool, X)
-            # input(rand_bool)
             y_pred_batch[rand_bool].append(y_pred)
             rand_counters[rand_bool] += 1
             # Calculate gradients.
@@ -227,7 +226,7 @@ def train_io(model, dataset, hyperparameters, dynamic_hist=False):
 
         model_id = io.add_model(hyperparameters)
 
-       io_dict = {"model_id": [],
+        io_dict = {"model_id": [],
                "epoch_time": [],
                "trn_ndcg": [],
                "trn_ndcg@5": [],
@@ -263,8 +262,10 @@ def train_io(model, dataset, hyperparameters, dynamic_hist=False):
             val_ndcgs.append(val_ndcg)
             val_ndcgs_at5[rand_bool_V].append(val_ndcg_at5)
 
-        io_dict["val_ndcg@5"].append(np.mean(val_ndcg_at5[0] + val_ndcg_at5[1]))
-        io_dict["val_ndcg"].append(np.mean(val_ndcg[0] + val_ndcg[1]))
+        io_dict["val_ndcg@5"].append(np.mean(val_ndcgs_at5[0] + val_ndcgs_at5[1]))
+        io_dict["val_ndcg"].append(np.mean(val_ndcgs[0] + val_ndcgs[1]))
+
+        io.save_json(model_id, dictionary)
 
         io.save_val_predictions(model_id, "\n".join(pred_string))
 
@@ -279,7 +280,6 @@ def train_io(model, dataset, hyperparameters, dynamic_hist=False):
         # epoch time
         epoch_time = time.time()-t
 
-        io.save_json(model_id, dictionary)
 
         print(f" (total/0/1) Trn NDCG@5: {trn_at_5[0]:.3f}/{trn_at_5[1]:.3f}/{trn_at_5[2]:.3f}, Val NDCG@5: {val_at_5[0]:.3f}/{val_at_5[1]:.3f}/{val_at_5[2]:.3f}, model_id: {model_id}, Val NDCG:{np.mean(val_ndcgs):4f}, (Epoch time: {epoch_time:4f})")
 
