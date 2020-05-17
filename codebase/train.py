@@ -265,7 +265,7 @@ def train_io(model, dataset, hyperparameters, dynamic_hist=False):
         io_dict["val_ndcg@5"].append(np.mean(val_ndcgs_at5[0] + val_ndcgs_at5[1]))
         io_dict["val_ndcg"].append(np.mean(val_ndcgs[0] + val_ndcgs[1]))
 
-        io.save_json(model_id, dictionary)
+        io.save_json(model_id, io_dict)
 
         io.save_val_predictions(model_id, "\n".join(pred_string))
 
