@@ -15,17 +15,18 @@ hyperparameters = {
     "ndcg@5": False,
 
     # Do not change these
-    "epochs" : 2,
+    "epochs" : 3,
     "artificial_relevance": False,
     "exp_ver": False,
     "device" : None,
+
     # Feature groups
-    "use_priors": False,
-    "normalize_per_subset": False,
-    "datetime_shenanigans": False,
-    "summarize_competitors": False,
-    "travelling_within_country_bool": False,
-    "occurrence conversion": False
+    "use_priors": True,
+    "normalize_per_subset": True,
+    "datetime_shenanigans": True,
+    "summarize_competitors": True,
+    "travelling_within_country_bool": True,
+    "occurrence conversion": True
 
 }
 
@@ -43,12 +44,12 @@ hyperparameter_settings = {
     "split_on_random_bool": [True],
     "ndcg@5": [True],
 
-    "use_priors": [True],
-    "normalize_per_subset": [True],
-    "datetime_shenanigans": [True],
-    "summarize_competitors": [True],
-    "travelling_within_country_bool": [True],
-    "occurrence conversion": [True]
+    "use_priors": [False],
+    "normalize_per_subset": [False],
+    "datetime_shenanigans": [False],
+    "summarize_competitors": [False],
+    "travelling_within_country_bool": [False],
+    "occurrence conversion": [False]
 
 }
 
