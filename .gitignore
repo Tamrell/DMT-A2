@@ -8,6 +8,8 @@ data/
 
 # Benchmark folder
 benchmark_results/
+results/
+gitignore/
 
 #csv files
 *.csv
