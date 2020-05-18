@@ -48,13 +48,15 @@ class BookingDataset():
         path = os.path.join("data", "train_segments", "train_segment_") ###################### I/O
         self.fold=fold
         if fold == "dummy":
-            print("\n\n!!! TRAINING ON THE DUMMY FOLD !!!\n\n")
-            train_segments = [0]
-            val_segment = 7
+            print("\n\n!!! TRAINING ON THE DUMMY FOLD (set to full data))!!!\n\n")
+            train_segments = list(range(9))
+            val_segment = 0
+
         elif fold == "full":
             print("\n\n!!! TRAINING ON THE FULL DATA!!!\n\n")
-            train_segments = list(range(0, 10))
+            train_segments = list(range(0, 9))
             val_segment = None
+
         elif fold == "test":
             print("\n\n!!! LOADED IN TEST DATA!!!\n\n")
             not_for_train.pop(2)

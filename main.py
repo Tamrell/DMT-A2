@@ -13,25 +13,25 @@ from codebase import train
 
 HYPERPARAMETERS = {
     # "fold": 0, # must be in [0, 1, 2]
-    "epochs" : 100,
+    "epochs" : 10,
     "learning_rate" : 1e-4,
-    "layers" : 5,
-    "layer_size" : 250,
-    "attention_layer_idx" : 3,  # -1 denotes no attention layer
+    "layers" : 4,
+    "layer_size" : 320,
+    "attention_layer_idx" : 1,  # -1 denotes no attention layer
     "resnet" : True,
     "exp_ver": False,
 
     "lambda_batch_size": 50,
     "split_on_random_bool": False,
     # "split_on_known_property": False, SKIP
-    "ndcg@5": True,
+    "ndcg@5": False,
     "artificial_relevance": False,
     "uniform_relevance": False,
 
 
 
     # Feature groups
-    "use_priors": True,
+    "use_priors": False,
     "normalize_per_subset": True,
     "datetime_shenanigans": True,
     "summarize_competitors": True,
