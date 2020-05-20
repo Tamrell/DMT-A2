@@ -217,7 +217,7 @@ def train_io(model, dataset, hyperparameters, dynamic_hist=False):
                     y_pred.backward(grad / batch_size)
 
                 # todo: check necessary
-                model.clip_grad(rand_bool)
+                # model.clip_grad(rand_bool)
                 model.step(rand_bool)
 
                 # reset grad_batch, y_pred_batch used for gradient_acc

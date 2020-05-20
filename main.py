@@ -13,7 +13,7 @@ from codebase import train
 
 HYPERPARAMETERS = {
     # "fold": 0, # must be in [0, 1, 2]
-    "epochs" : 10,
+    "epochs" : 20,
     "learning_rate" : 1e-4,
     "layers" : 4,
     "layer_size" : 320,
@@ -21,7 +21,7 @@ HYPERPARAMETERS = {
     "resnet" : True,
     "exp_ver": False,
 
-    "lambda_batch_size": 50,
+    "lambda_batch_size": 25,
     "split_on_random_bool": False,
     # "split_on_known_property": False, SKIP
     "ndcg@5": False,
@@ -31,7 +31,7 @@ HYPERPARAMETERS = {
 
 
     # Feature groups
-    "use_priors": False,
+    "use_priors": True,
     "normalize_per_subset": True,
     "datetime_shenanigans": True,
     "summarize_competitors": True,

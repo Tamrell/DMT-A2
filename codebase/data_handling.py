@@ -19,6 +19,13 @@ class BookingDataset():
                      1: [5, 6],
                      2: [7, 8]}
 
+        test_distance = True
+        test_log = True
+        test_month_normalization = True
+        test_length_of_stay_normalization = True
+
+        dummy_validation_segment = 1
+
         not_for_train = ["srch_id", "relevance", "artificial_relevance", "random_bool", "prop_id"]
 
         artificial_relevance = hyperparameters["artificial_relevance"]
@@ -36,6 +43,9 @@ class BookingDataset():
         if use_priors:
             if isinstance(fold, int):
                 to_remove.pop(fold+1)
+
+            if fold=="dummy" and dummy_validation_segment < 3:
+                to_remove.pop(dummy_validation_segment+1)
             else:
                 to_remove = ["0_", "1_", "2_"]
         else:
@@ -49,8 +59,8 @@ class BookingDataset():
         self.fold=fold
         if fold == "dummy":
             print("\n\n!!! TRAINING ON THE DUMMY FOLD (set to full data))!!!\n\n")
-            train_segments = list(range(9))
-            val_segment = 0
+            train_segments = [0, 2, 3, 4, 5, 6, 7, 8]
+            val_segment = dummy_validation_segment
 
         elif fold == "full":
             print("\n\n!!! TRAINING ON THE FULL DATA!!!\n\n")
@@ -80,6 +90,23 @@ class BookingDataset():
         if fold == "test":
             test_df = pd.read_csv(os.path.join("data", "test_preprocessed.csv"))
             test_df = test_df[[c for c in test_df.columns if c not in priors_default] + priors_default]
+
+
+            ## TESTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+            if test_distance:
+                col = "orig_destination_distance"
+                test_df = normalize_per_value(test_df, "srch_id", col)
+                test_df = normalize_per_value(test_df, "prop_country_id", col)
+                test_df = normalize_per_value(test_df, "visitor_location_country_id", col)
+
+            if test_length_of_stay_normalization:
+                test_df = normalize_per_value(test_df, "prop_id", "srch_length_of_stay")
+
+            if test_log:
+                test_df["prop_location_score2"] = (test_df["prop_location_score2"]+0.001).apply(np.log)
+            ## TESTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+
+
             not_for_test += self.toggle_features(test_df, hyperparameters)
             not_for_test = list(set(not_for_test))
             test_df = test_df.drop(columns=[test_df.columns[0]] + not_for_test)
@@ -100,6 +127,30 @@ class BookingDataset():
                 train_df = train_df.append(pd.read_csv(f"{path}{segment}.csv")) ################ I/O
             train_df = train_df[[c for c in train_df.columns if c not in priors_default] + priors_default]
             val_df = val_df[[c for c in val_df.columns if c not in priors_default] + priors_default]
+
+            ## TESTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+
+            if test_distance:
+                col = "orig_destination_distance"
+                train_df = normalize_per_value(train_df, "srch_id", col)
+                train_df = normalize_per_value(train_df, "prop_country_id", col)
+                train_df = normalize_per_value(train_df, "visitor_location_country_id", col)
+                val_df = normalize_per_value(val_df, "srch_id", col)
+                val_df = normalize_per_value(val_df, "prop_country_id", col)
+                val_df = normalize_per_value(val_df, "visitor_location_country_id", col)
+
+            if test_length_of_stay_normalization:
+                train_df = normalize_per_value(train_df, "prop_id", "srch_length_of_stay")
+                val_df = normalize_per_value(val_df, "prop_id", "srch_length_of_stay")
+
+            if test_month_normalization:
+                pass
+            if test_log:
+                train_df["prop_location_score2"] = (train_df["prop_location_score2"]+0.001).apply(np.log)
+                val_df["prop_location_score2"] = (val_df["prop_location_score2"]+0.001).apply(np.log)
+            ## TESTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+
+
             #################### TEST the shift-rescale ################
             val_df = shift_rescale_columns(val_df, not_for_train+["random_bool"])
             train_df = shift_rescale_columns(train_df, not_for_train+["random_bool"])
@@ -293,7 +344,11 @@ def preprocessing(train_path="", test_path=""):
 
     # Fill NaNs
     train_df["prop_review_score"] = train_df["prop_review_score"].fillna(0)
-    train_df["prop_location_score2"] = train_df["prop_location_score2"].fillna(train_df["prop_location_score2"].median())
+    train_df["prop_location_score2"] = (train_df["prop_location_score2"].fillna(train_df["prop_location_score2"].median())+0.001).apply(np.log)
+
+    #prop_location_score2 log then median fill
+
+
 
     # Finish up by saving the train data
     train_df = k_fold_segmentation(train_df, to_drop_exclusive)

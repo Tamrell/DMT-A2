@@ -15,6 +15,8 @@ class ModelWrapper:
         # DEPRECATED
         prop_split = None
 
+        decay=0.01
+
         # if random_split and prop_split:
         #     # [rand_bool, prop_known] = [[0, 1], [0, 1]]
         #     self.models = [[], []]
@@ -25,14 +27,14 @@ class ModelWrapper:
                            ExodiaNet(in_size, hyperparameters)]
             self.forward = self.forward_rand
             self.step = self.split_step
-            self.optimizers = [torch.optim.Adam(self.models[0].parameters(), lr=hyperparameters['learning_rate']),
-                               torch.optim.Adam(self.models[1].parameters(), lr=hyperparameters['learning_rate'])]
+            self.optimizers = [torch.optim.AdamW(self.models[0].parameters(), lr=hyperparameters['learning_rate'], weight_decay=decay),
+                               torch.optim.AdamW(self.models[1].parameters(), lr=hyperparameters['learning_rate'], weight_decay=decay)]
             self.clip_grad = self.clip_grad_split
 
         else:
             self.model = ExodiaNet(in_size, hyperparameters)
             self.forward = self.forward_single
-            self.optimizer = torch.optim.Adam(self.model.parameters(), lr=hyperparameters['learning_rate'])
+            self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=hyperparameters['learning_rate'], weight_decay=decay)
             self.step = self.single_step
             self.clip_grad = self.clip_grad_single
 
